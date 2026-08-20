@@ -23,7 +23,7 @@ export async function seed() {
     if (!existing.rows[0]) {
       await pool.query(
         "insert into qa_users(full_name,email,password_hash,role,account_status) values($1,$2,$3,'ADMIN','ACTIVE')",
-        ["QA Administrator", process.env.INITIAL_ADMIN_EMAIL.toLowerCase(), hash(process.env.INITIAL_ADMIN_PASSWORD)],
+        [process.env.INITIAL_ADMIN_NAME || "QA Administrator", process.env.INITIAL_ADMIN_EMAIL.toLowerCase(), hash(process.env.INITIAL_ADMIN_PASSWORD)],
       );
     }
   }
