@@ -1,22 +1,23 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: QA Test Case Manager API
 servers:
   - url: /api
-    description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: modules
+  - name: test-cases
+  - name: users
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +25,504 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/session:
+    get:
+      operationId: getSession
+      tags: [auth]
+      summary: Return the current session
+      responses:
+        "200":
+          description: Session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "401":
+          description: Invalid credentials
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Log out
+      responses:
+        "204":
+          description: Logged out
+  /auth/access-requests:
+    post:
+      operationId: requestAccess
+      tags: [auth]
+      summary: Submit a pending access request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AccessRequestInput"
+      responses:
+        "201":
+          description: Request submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+        "409":
+          description: Duplicate email
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Dashboard aggregates and recent activity
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /modules:
+    get:
+      operationId: listModules
+      tags: [modules]
+      summary: List modules with test result counts
+      responses:
+        "200":
+          description: Modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Module"
+  /test-cases:
+    get:
+      operationId: listTestCases
+      tags: [test-cases]
+      summary: Search and filter test cases
+      parameters:
+        - $ref: "#/components/parameters/Search"
+        - $ref: "#/components/parameters/ModuleId"
+        - $ref: "#/components/parameters/Result"
+        - $ref: "#/components/parameters/PerformedBy"
+        - $ref: "#/components/parameters/From"
+        - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PageSize"
+      responses:
+        "200":
+          description: Test cases
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestCasePage"
+    post:
+      operationId: createTestCase
+      tags: [test-cases]
+      summary: Create a test case with a server-generated number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestCaseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestCase"
+  /test-cases/{id}:
+    get:
+      operationId: getTestCase
+      tags: [test-cases]
+      summary: Get test case detail and history
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestCaseDetail"
+    patch:
+      operationId: updateTestCase
+      tags: [test-cases]
+      summary: Admin-only test case update
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestCaseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestCase"
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: Admin user management view
+      responses:
+        "200":
+          description: Users and pending requests
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserManagement"
+  /users/access-requests/{id}/approve:
+    post:
+      operationId: approveAccessRequest
+      tags: [users]
+      summary: Approve an access request
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+  /users/access-requests/{id}/reject:
+    post:
+      operationId: rejectAccessRequest
+      tags: [users]
+      summary: Reject an access request with a reason
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectionInput"
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccessRequest"
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Disable, enable, or change a user's role
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [auth]
+      summary: Get current profile
+      responses:
+        "200":
+          description: Profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /profile/password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change current password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PasswordChangeInput"
+      responses:
+        "204":
+          description: Password changed
 components:
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+    ModuleId:
+      name: moduleId
+      in: query
+      schema: { type: integer }
+    Result:
+      name: result
+      in: query
+      schema:
+        $ref: "#/components/schemas/TestResult"
+    PerformedBy:
+      name: performedBy
+      in: query
+      schema: { type: integer }
+    From:
+      name: from
+      in: query
+      schema: { type: string, format: date }
+    To:
+      name: to
+      in: query
+      schema: { type: string, format: date }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
-
+        status: { type: string }
+    User:
+      type: object
+      required: [id, fullName, email, role, accountStatus, createdAt]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: "#/components/schemas/Role" }
+        accountStatus: { $ref: "#/components/schemas/AccountStatus" }
+        createdAt: { type: string, format: date-time }
+    Session:
+      type: object
+      required: [authenticated]
+      properties:
+        authenticated: { type: boolean }
+        user:
+          anyOf:
+            - $ref: "#/components/schemas/User"
+            - type: "null"
+    Role:
+      type: string
+      enum: [ADMIN, USER]
+    AccountStatus:
+      type: string
+      enum: [PENDING, ACTIVE, REJECTED, DISABLED]
+    TestResult:
+      type: string
+      enum: [PASS, FAIL, BLOCKED, NOT_TESTED]
+    Attachment:
+      type: object
+      required: [id, type, sourceType, url]
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [IMAGE, VIDEO] }
+        sourceType: { type: string, enum: [UPLOAD, EXTERNAL_LINK] }
+        url: { type: string, format: uri }
+        fileName: { type: ["string", "null"] }
+        mimeType: { type: ["string", "null"] }
+    Module:
+      type: object
+      required: [id, name, code, testCaseCount, passCount, failCount, blockedCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        description: { type: ["string", "null"] }
+        testCaseCount: { type: integer }
+        passCount: { type: integer }
+        failCount: { type: integer }
+        blockedCount: { type: integer }
+    TestCase:
+      type: object
+      required: [id, testCaseNumber, moduleId, moduleName, testDate, description, expectedResult, actualResult, testResult, performedBy, updatedAt, attachmentCount]
+      properties:
+        id: { type: integer }
+        testCaseNumber: { type: string }
+        moduleId: { type: integer }
+        moduleName: { type: string }
+        testDate: { type: string, format: date-time }
+        description: { type: string }
+        expectedResult: { type: string }
+        actualResult: { type: string }
+        testResult: { $ref: "#/components/schemas/TestResult" }
+        performedBy: { type: string }
+        performedByUserId: { type: integer }
+        createdBy: { type: string }
+        updatedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        attachmentCount: { type: integer }
+    TestCaseDetail:
+      allOf:
+        - $ref: "#/components/schemas/TestCase"
+        - type: object
+          required: [attachments, history]
+          properties:
+            attachments:
+              type: array
+              items: { $ref: "#/components/schemas/Attachment" }
+            history:
+              type: array
+              items: { $ref: "#/components/schemas/HistoryEntry" }
+    HistoryEntry:
+      type: object
+      required: [id, fieldName, previousValue, newValue, changedBy, changedAt]
+      properties:
+        id: { type: integer }
+        fieldName: { type: string }
+        previousValue: { type: ["string", "null"] }
+        newValue: { type: ["string", "null"] }
+        changedBy: { type: string }
+        changedAt: { type: string, format: date-time }
+    TestCasePage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/TestCase" }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    AccessRequest:
+      type: object
+      required: [id, userId, fullName, email, requestedRole, status, requestedAt]
+      properties:
+        id: { type: integer }
+        userId: { type: integer }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        requestedRole: { $ref: "#/components/schemas/Role" }
+        status: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+        rejectionReason: { type: ["string", "null"] }
+        requestedAt: { type: string, format: date-time }
+        reviewedAt: { type: ["string", "null"], format: date-time }
+        reviewedBy: { type: ["string", "null"] }
+    DashboardSummary:
+      type: object
+      required: [totalTestCases, totalModules, pass, fail, blocked, notTested, totalUsers, pendingRequests, recentActivity]
+      properties:
+        totalTestCases: { type: integer }
+        totalModules: { type: integer }
+        pass: { type: integer }
+        fail: { type: integer }
+        blocked: { type: integer }
+        notTested: { type: integer }
+        totalUsers: { type: integer }
+        pendingRequests: { type: integer }
+        recentActivity:
+          type: array
+          items: { $ref: "#/components/schemas/HistoryEntry" }
+    UserManagement:
+      type: object
+      required: [pendingRequests, activeUsers]
+      properties:
+        pendingRequests:
+          type: array
+          items: { $ref: "#/components/schemas/AccessRequest" }
+        activeUsers:
+          type: array
+          items: { $ref: "#/components/schemas/User" }
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    AccessRequestInput:
+      type: object
+      required: [fullName, email, password, confirmPassword, requestedRole]
+      properties:
+        fullName: { type: string, minLength: 2 }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+        confirmPassword: { type: string, minLength: 8 }
+        requestedRole: { $ref: "#/components/schemas/Role" }
+    RejectionInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 3 }
+    TestCaseInput:
+      type: object
+      required: [moduleId, description, expectedResult, actualResult, testResult]
+      properties:
+        moduleId: { type: integer }
+        description: { type: string, minLength: 1 }
+        expectedResult: { type: string, minLength: 1 }
+        actualResult: { type: string }
+        testResult: { $ref: "#/components/schemas/TestResult" }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentInput" }
+    AttachmentInput:
+      type: object
+      required: [type, sourceType, url]
+      properties:
+        type: { type: string, enum: [IMAGE, VIDEO] }
+        sourceType: { type: string, enum: [UPLOAD, EXTERNAL_LINK] }
+        url: { type: string, format: uri }
+        fileName: { type: string }
+        mimeType: { type: string }
+    TestCaseUpdate:
+      type: object
+      properties:
+        moduleId: { type: integer }
+        description: { type: string, minLength: 1 }
+        expectedResult: { type: string, minLength: 1 }
+        actualResult: { type: string }
+        testResult: { $ref: "#/components/schemas/TestResult" }
+        testDate: { type: string, format: date-time }
+        attachments:
+          type: array
+          items: { $ref: "#/components/schemas/AttachmentInput" }
+    UserUpdate:
+      type: object
+      properties:
+        role: { $ref: "#/components/schemas/Role" }
+        accountStatus: { type: string, enum: [ACTIVE, DISABLED] }
+    PasswordChangeInput:
+      type: object
+      required: [currentPassword, newPassword, confirmPassword]
+      properties:
+        currentPassword: { type: string, minLength: 8 }
+        newPassword: { type: string, minLength: 8 }
+        confirmPassword: { type: string, minLength: 8 }

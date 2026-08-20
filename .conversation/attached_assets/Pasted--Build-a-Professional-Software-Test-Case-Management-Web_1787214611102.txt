@@ -1,0 +1,1490 @@
+# Build a Professional Software Test Case Management Web Application
+
+Build a fully functional, production-quality **Software Test Case Management System** for managing software testing activities.
+
+The application will be used by software testers and administrators to create, execute, review, edit, and manage software test cases module-wise.
+
+Do NOT create a simple demo or mockup. Build a complete working web application with a real database, authentication, role-based access control, validations, persistent data, file/link attachments, and a professional responsive UI.
+
+---
+
+# 1. Technology Requirements
+
+Use a modern and reliable full-stack architecture suitable for Replit.
+
+Preferred stack:
+
+* Frontend: React / Next.js
+* Backend: Node.js / Next.js API routes
+* Database: PostgreSQL
+* ORM: Prisma or another reliable ORM
+* Authentication: Secure session-based authentication or JWT with secure password hashing
+* Password hashing: bcrypt/argon2
+* File uploads: Use a reliable storage solution compatible with Replit
+* UI: Tailwind CSS
+* Icons: Lucide React or equivalent
+* Charts are optional but the dashboard should be extensible.
+
+Do NOT store important application data only in browser localStorage.
+
+All users, test cases, modules, access requests, attachments, etc. must be stored persistently in the database.
+
+---
+
+# 2. Application Name
+
+Use a professional name such as:
+
+**QA Test Case Manager**
+
+The branding should be minimal and professional.
+
+Primary visual identity:
+
+* Black
+* White
+* Grey
+* Very limited accent color only where necessary
+
+The application must support:
+
+* Light Mode
+* Dark Mode
+
+Add a theme toggle in the application header.
+
+The design must look like a professional enterprise QA/testing application rather than a basic student project.
+
+---
+
+# 3. Authentication System
+
+Create a proper authentication system.
+
+The initial screen should contain:
+
+* Login
+* Sign Up
+
+## Login
+
+Login fields:
+
+* Email
+* Password
+
+Buttons:
+
+* Login
+* Sign Up
+
+Add:
+
+* Show/hide password
+* Proper validation
+* Invalid login error
+* Loading state
+* Logout functionality
+
+Passwords must NEVER be stored as plain text.
+
+---
+
+# 4. Sign Up / Access Request Workflow
+
+A new person who does not already have access can click:
+
+**Sign Up**
+
+Show a registration/access-request form.
+
+Fields:
+
+1. Full Name
+2. Email ID
+3. Password
+4. Confirm Password
+5. Role Applied For
+
+Role options:
+
+* User
+* Admin
+
+IMPORTANT:
+
+Selecting Admin must NOT automatically give administrator access.
+
+Every new account must initially have a status such as:
+
+**Pending**
+
+After completing the form, show:
+
+**Request Access**
+
+button.
+
+When the user clicks Request Access:
+
+* Validate all fields
+* Check duplicate email
+* Create an account/access request in the database
+* Set request status to `PENDING`
+* Do NOT allow the user to access the application yet
+* Show confirmation that the access request has been submitted
+
+The system should clearly display:
+
+"Your access request has been submitted and is awaiting administrator approval."
+
+---
+
+# 5. Admin Access Request Management
+
+Only Admin users can see access requests.
+
+Admin navigation must contain:
+
+* Create Test Case
+* View Test Cases
+* User Management
+* Edit Test Case
+
+Inside:
+
+**User Management**
+
+show all pending access requests.
+
+Each request should display:
+
+* Name
+* Email
+* Requested Role
+* Request Date/Time
+* Status
+
+Admin actions:
+
+* Accept
+* Reject
+
+## Accept
+
+If Admin accepts:
+
+* Activate the user
+* Assign the approved role
+* Allow the user to log in
+* Update request status to `APPROVED`
+
+## Reject
+
+If Admin rejects:
+
+Admin MUST provide a rejection reason.
+
+Example:
+
+"Insufficient information provided."
+
+The rejection reason must be saved in the database.
+
+Update status to:
+
+`REJECTED`
+
+Display:
+
+* Rejection reason
+* Rejected by
+* Rejected date/time
+
+A rejected user must not be able to access the application.
+
+---
+
+# 6. User Roles
+
+There are exactly two main roles:
+
+## USER
+
+Normal testing user.
+
+USER can:
+
+1. Create Test Case
+2. View Test Cases
+
+USER cannot:
+
+* Manage users
+* Approve/reject access requests
+* Delete users
+* Edit existing test cases
+* Change another user's test case
+* Change roles
+* Access admin functionality
+
+## ADMIN
+
+Admin can:
+
+1. Create Test Case
+2. View Test Cases
+3. User Management
+4. Edit Test Case
+
+Admin has full management privileges.
+
+---
+
+# 7. Important Security Requirement
+
+Role permissions MUST be enforced on the backend/API/database level.
+
+Do NOT simply hide admin buttons from the frontend.
+
+For example:
+
+Even if a normal user manually tries to access:
+
+`/admin`
+`/users`
+`/edit-test-case`
+
+the backend must reject the request.
+
+Never trust frontend role information.
+
+---
+
+# 8. Application Layout
+
+After login, show a professional application dashboard.
+
+Use a sidebar navigation on desktop and responsive navigation on smaller screens.
+
+Header should contain:
+
+* Application name/logo
+* Current logged-in user's name
+* User role
+* Theme toggle
+* Logout
+
+Sidebar for USER:
+
+* Create Test Case
+* View Test Cases
+
+Sidebar for ADMIN:
+
+* Create Test Case
+* View Test Cases
+* User Management
+* Edit Test Case
+
+Highlight the currently selected menu.
+
+---
+
+# 9. MODULE MANAGEMENT
+
+The system must support software modules.
+
+Examples:
+
+* Login
+* User Management
+* Inventory
+* Billing
+* GRN
+* Pharmacy
+* Reports
+* Patient Registration
+* Appointment
+* IOL
+* etc.
+
+The architecture must allow modules to be added/maintained without changing application code.
+
+At minimum, modules should exist as database records.
+
+For Create Test Case, provide:
+
+**Select Module**
+
+as a dropdown/searchable selector.
+
+Also make sure every test case belongs to exactly one module.
+
+---
+
+# 10. CREATE NEW TEST CASE
+
+Both USER and ADMIN can create test cases.
+
+Page:
+
+**Create New Test Case**
+
+Fields:
+
+### Test Case Number
+
+Automatically generated by the system.
+
+The user must NOT manually enter it.
+
+### Module
+
+Required.
+
+Provide searchable dropdown.
+
+### Test Date
+
+Automatically generated from the server's configured/authoritative time source.
+
+IMPORTANT:
+
+Do NOT rely on the user's browser/device clock.
+
+The test date/time must come from the backend/server time.
+
+Store the exact timestamp in the database.
+
+Display it in a readable format.
+
+Example:
+
+`20 Aug 2026, 01:58 PM`
+
+### Test Performed By
+
+Automatically populated from the currently logged-in user's account.
+
+Example:
+
+`Debjit Dey`
+
+The user must NOT manually change this field.
+
+Store the user ID as the actual relationship, not only the displayed name.
+
+### Test Description
+
+Large text area.
+
+Example:
+
+"Verify that the user can create a new GRN using a valid supplier and valid item."
+
+### Expected Result
+
+Large text area.
+
+Example:
+
+"GRN should be created successfully and a unique GRN number should be generated."
+
+### Actual Result
+
+Large text area.
+
+This should be filled after performing the test.
+
+### Test Result
+
+Provide a clear status selector:
+
+* PASS
+* FAIL
+* BLOCKED
+* NOT TESTED
+
+Use professional visual status indicators.
+
+### Attachments
+
+Allow the tester to attach evidence.
+
+Support:
+
+* Images
+* Videos
+* Image URLs
+* Video URLs
+
+For uploaded files:
+
+* Upload file
+* Show filename
+* Preview images where possible
+* Show video preview/player where possible
+* Allow removing attachment before submission
+
+For external links:
+
+Provide separate fields/buttons:
+
+* Add Image Link
+* Add Video Link
+
+Validate URLs.
+
+Do not force users to upload a file if they only have an external link.
+
+Allow multiple attachments per test case.
+
+---
+
+# 11. TEST CASE NUMBER GENERATION — VERY IMPORTANT
+
+This is a critical requirement.
+
+Test case numbers must be automatically generated.
+
+The test case number must be unique.
+
+There must NEVER be duplicate test case numbers.
+
+Test case numbers should be module-specific.
+
+Example:
+
+LOGIN:
+
+* LOGIN-TC-001
+* LOGIN-TC-002
+* LOGIN-TC-003
+
+GRN:
+
+* GRN-TC-001
+* GRN-TC-002
+* GRN-TC-003
+
+BILLING:
+
+* BILLING-TC-001
+* BILLING-TC-002
+
+If a new test case is created under GRN, automatically determine the next available GRN number.
+
+Example:
+
+Existing:
+
+GRN-TC-001
+GRN-TC-002
+GRN-TC-003
+
+New test case:
+
+GRN-TC-004
+
+If GRN-TC-003 is deleted, the system MUST NOT reuse GRN-TC-003.
+
+The next new GRN test case must continue with:
+
+GRN-TC-004
+
+The numbering system must be concurrency-safe.
+
+If two users create test cases simultaneously, they MUST NOT receive the same test case number.
+
+Implement this using a database-level unique constraint and a transaction/atomic sequence mechanism.
+
+Do NOT generate numbers using frontend array length.
+
+Do NOT use:
+
+`existingTestCases.length + 1`
+
+because that can create duplicate numbers.
+
+Use a proper database-backed sequence/counter per module.
+
+Example database concept:
+
+Module:
+
+GRN
+
+Sequence:
+
+4
+
+Next generated number:
+
+GRN-TC-004
+
+---
+
+# 12. TEST CASE DATABASE STRUCTURE
+
+Create a proper relational database structure.
+
+At minimum:
+
+## User
+
+* id
+* fullName
+* email
+* passwordHash
+* role
+* accountStatus
+* createdAt
+* updatedAt
+
+Roles:
+
+* ADMIN
+* USER
+
+Account statuses:
+
+* PENDING
+* ACTIVE
+* REJECTED
+* DISABLED
+
+## AccessRequest
+
+* id
+* userId
+* requestedRole
+* status
+* rejectionReason
+* requestedAt
+* reviewedAt
+* reviewedBy
+
+## Module
+
+* id
+* name
+* code
+* description
+* createdAt
+* updatedAt
+
+Module code must be unique.
+
+## ModuleSequence
+
+* id
+* moduleId
+* nextNumber
+
+Module ID must be unique.
+
+## TestCase
+
+* id
+* testCaseNumber
+* moduleId
+* testDate
+* performedByUserId
+* description
+* expectedResult
+* actualResult
+* testResult
+* createdAt
+* updatedAt
+* createdBy
+* updatedBy
+
+`testCaseNumber` must have a database UNIQUE constraint.
+
+## Attachment
+
+* id
+* testCaseId
+* type
+* sourceType
+* url
+* fileName
+* mimeType
+* createdAt
+
+Types:
+
+* IMAGE
+* VIDEO
+
+Source types:
+
+* UPLOAD
+* EXTERNAL_LINK
+
+Use proper foreign keys and indexes.
+
+---
+
+# 13. VIEW TEST CASES
+
+Create a page:
+
+**View Test Cases**
+
+This page should initially display all available modules as professional clickable cards/posters.
+
+Example:
+
+[ LOGIN ]
+
+[ GRN ]
+
+[ BILLING ]
+
+[ INVENTORY ]
+
+[ REPORTS ]
+
+[ PHARMACY ]
+
+Cards should look visually clean and professional.
+
+Each module card can show:
+
+* Module name
+* Module code
+* Number of test cases
+* PASS count
+* FAIL count
+* BLOCKED count
+
+The module cards must be clickable.
+
+---
+
+# 14. MODULE TEST CASE LIST
+
+When the user clicks a module:
+
+Example:
+
+`GRN`
+
+Open:
+
+**GRN Test Cases**
+
+Show test cases as a clean list/table.
+
+Example:
+
+1. GRN-TC-001
+2. GRN-TC-002
+3. GRN-TC-003
+4. GRN-TC-004
+
+Each row should display:
+
+* Test Case Number
+* Test Date
+* Description (shortened)
+* Expected Result (shortened)
+* Actual Result (shortened)
+* Test Result
+* Performed By
+* Attachment indicator
+* Last Updated
+
+Clicking a test case should open a detailed view.
+
+---
+
+# 15. TEST CASE DETAILS
+
+Create a professional detail page/modal.
+
+Display:
+
+**Test Case Number**
+
+**Module**
+
+**Test Date**
+
+**Performed By**
+
+**Description**
+
+**Expected Result**
+
+**Actual Result**
+
+**Test Result**
+
+**Attachments**
+
+Show image previews where possible.
+
+For videos, show a playable video player where possible.
+
+For external links:
+
+Show clickable buttons such as:
+
+* Open Image
+* Open Video
+
+Also display:
+
+* Created By
+* Created At
+* Last Updated By
+* Last Updated At
+
+---
+
+# 16. SEARCH AND FILTERING
+
+View Test Cases should have:
+
+### Search
+
+Search by:
+
+* Test Case Number
+* Description
+* Performed By
+
+### Filters
+
+* Module
+* Test Result
+* Performed By
+* Date range
+
+Results should update efficiently.
+
+Add pagination if there are many records.
+
+---
+
+# 17. ADMIN — EDIT TEST CASE
+
+Only ADMIN users can access:
+
+**Edit Test Case**
+
+Admin should be able to search and select any existing test case.
+
+Admin can edit:
+
+* Module
+* Test Description
+* Expected Result
+* Actual Result
+* Test Result
+* Attachments
+* Test date if necessary
+
+However, be careful with the test case number.
+
+The system should NEVER allow an admin to manually create a duplicate test case number.
+
+If the module is changed, handle numbering safely.
+
+Preferably:
+
+Do NOT automatically change the existing Test Case Number when an admin changes the module.
+
+The test case number should remain historically traceable.
+
+If module transfer is allowed, clearly record the updated module while preserving the original test case ID/history.
+
+---
+
+# 18. AUDIT / CHANGE HISTORY
+
+Because this is a professional testing system, maintain an audit history.
+
+Whenever an admin edits a test case, record:
+
+* What changed
+* Previous value
+* New value
+* Changed by
+* Changed date/time
+
+Create a:
+
+**Test Case History**
+
+section.
+
+This will help identify who changed a test case and what was changed.
+
+---
+
+# 19. USER MANAGEMENT
+
+Admin-only page.
+
+Show:
+
+### Pending Access Requests
+
+Columns:
+
+* Name
+* Email
+* Requested Role
+* Requested Date
+* Status
+* Actions
+
+Actions:
+
+* Approve
+* Reject
+
+Reject must require a reason.
+
+### Active Users
+
+Show:
+
+* Name
+* Email
+* Role
+* Account status
+* Created date
+
+Admin actions:
+
+* Disable user
+* Enable user
+* Change role
+
+Before deleting a user, show a confirmation dialog.
+
+IMPORTANT:
+
+Do not allow the last active ADMIN account to be deleted or demoted.
+
+This prevents the system from becoming inaccessible.
+
+---
+
+# 20. DASHBOARD
+
+After login, show a professional dashboard.
+
+Display summary cards such as:
+
+* Total Test Cases
+* Total Modules
+* PASS
+* FAIL
+* BLOCKED
+* NOT TESTED
+
+For Admin additionally show:
+
+* Total Users
+* Pending Access Requests
+
+Optional:
+
+Add a simple test result distribution chart.
+
+Keep the dashboard clean and minimal.
+
+---
+
+# 21. RESPONSIVE DESIGN
+
+The application must work properly on:
+
+* Desktop
+* Laptop
+* Tablet
+* Mobile
+
+Desktop should use a sidebar.
+
+Mobile should use a collapsible navigation menu.
+
+Tables should become horizontally scrollable or responsive cards on small screens.
+
+---
+
+# 22. UI / UX DESIGN
+
+Use a premium enterprise-style design.
+
+Color palette:
+
+Light mode:
+
+* White background
+* Black/dark text
+* Grey borders
+* Light grey secondary surfaces
+
+Dark mode:
+
+* Black / near-black background
+* White text
+* Dark grey cards
+* Grey borders
+
+Use:
+
+* Rounded cards
+* Subtle shadows
+* Clean typography
+* Proper spacing
+* Consistent buttons
+* Professional modals
+* Toast notifications
+* Loading indicators
+* Empty states
+* Error states
+
+Do NOT make it flashy.
+
+It should look like a serious QA management product.
+
+---
+
+# 23. VALIDATION
+
+Implement both frontend and backend validation.
+
+Examples:
+
+* Email must be valid
+* Password minimum length
+* Confirm password must match
+* Full name required
+* Module required
+* Test description required
+* Expected result required
+* Test result required
+* URL must be valid
+* Uploaded file type must be supported
+* Uploaded file size must have a reasonable limit
+
+Display user-friendly error messages.
+
+Never expose database errors directly to users.
+
+---
+
+# 24. FILE UPLOAD SECURITY
+
+Uploaded files must be validated.
+
+Allow only appropriate:
+
+Images:
+
+* JPG
+* JPEG
+* PNG
+* WEBP
+
+Videos:
+
+* MP4
+* WEBM
+* MOV where supported
+
+Set a reasonable file size limit.
+
+Reject unsupported file types.
+
+Never execute uploaded files.
+
+Store file metadata in the database.
+
+---
+
+# 25. DATE/TIME REQUIREMENT
+
+This is important.
+
+Test dates must NOT depend on the tester's Windows system clock.
+
+Use server-side/database time.
+
+The application should have a consistent timezone configuration.
+
+Default timezone:
+
+**Asia/Kolkata**
+
+Store timestamps consistently in the database, preferably UTC, and display them in Asia/Kolkata.
+
+For example:
+
+Database:
+
+UTC timestamp
+
+UI:
+
+20 Aug 2026, 01:58 PM IST
+
+Do not trust:
+
+`new Date()` from an untrusted client for important audit timestamps.
+
+---
+
+# 26. ERROR HANDLING
+
+Create proper error handling.
+
+If database fails:
+
+Show:
+
+"Something went wrong. Please try again."
+
+If upload fails:
+
+"Attachment upload failed. Please try again."
+
+If session expires:
+
+Redirect to Login.
+
+If unauthorized:
+
+Show:
+
+"You do not have permission to access this page."
+
+If test case creation fails:
+
+Do not create a partial test case.
+
+Use database transactions where appropriate.
+
+---
+
+# 27. LOADING STATES
+
+Every important action must have loading feedback.
+
+Examples:
+
+* Login...
+* Requesting Access...
+* Creating Test Case...
+* Saving Changes...
+* Approving...
+* Rejecting...
+* Uploading...
+* Loading Test Cases...
+
+Prevent duplicate form submissions by disabling the submit button while processing.
+
+---
+
+# 28. CONFIRMATION DIALOGS
+
+For destructive actions:
+
+* Delete user
+* Disable user
+* Reject access
+* Remove attachment
+
+Always show a confirmation dialog.
+
+Reject access must additionally require a rejection reason.
+
+---
+
+# 29. DATABASE INTEGRITY
+
+Implement proper constraints.
+
+At minimum:
+
+* Unique email
+* Unique module code
+* Unique test case number
+* Unique module sequence
+* Foreign key relationships
+* Required fields
+* Proper indexes
+
+Use transactions for:
+
+* Test case number generation
+* Access approval
+* Access rejection
+* Test case updates involving multiple database records
+
+---
+
+# 30. SECURITY
+
+Implement:
+
+* Secure password hashing
+* Protected routes
+* Server-side authorization
+* Input validation
+* SQL injection protection through ORM/parameterized queries
+* XSS-safe rendering
+* Secure file validation
+* Session expiration
+* Logout
+* Rate limiting on authentication endpoints if practical
+
+Never expose password hashes to the frontend.
+
+Never send sensitive user information unnecessarily.
+
+---
+
+# 31. SEED / INITIAL ADMIN
+
+The application needs a way to create the first administrator.
+
+Create a secure setup mechanism using environment variables, for example:
+
+`INITIAL_ADMIN_EMAIL`
+
+`INITIAL_ADMIN_PASSWORD`
+
+On first deployment/startup, create the initial admin if one does not exist.
+
+Do NOT hard-code credentials in source code.
+
+Clearly document how to configure the initial admin in Replit Secrets.
+
+---
+
+# 32. ENVIRONMENT VARIABLES
+
+Use environment variables / Replit Secrets for:
+
+* DATABASE_URL
+* SESSION_SECRET
+* INITIAL_ADMIN_EMAIL
+* INITIAL_ADMIN_PASSWORD
+* STORAGE credentials if required
+
+Never hard-code secrets.
+
+Never commit `.env` containing real credentials.
+
+Create a `.env.example` file with placeholder values.
+
+---
+
+# 33. SAMPLE DATA
+
+For development/demo purposes, create seed data with sample modules:
+
+* Login
+* User Management
+* GRN
+* Billing
+* Inventory
+* Reports
+
+Create a few sample test cases only if necessary.
+
+Clearly separate development seed data from production data.
+
+---
+
+# 34. IMPORTANT TEST CASE NUMBER EXAMPLES
+
+If modules are:
+
+LOGIN
+GRN
+BILLING
+
+Then:
+
+LOGIN-TC-001
+LOGIN-TC-002
+LOGIN-TC-003
+
+GRN-TC-001
+GRN-TC-002
+GRN-TC-003
+
+BILLING-TC-001
+BILLING-TC-002
+
+Numbers must be unique across the entire database.
+
+The same test case number must never exist twice.
+
+Test case numbers must never be recycled after deletion.
+
+---
+
+# 35. ADMIN VS USER MENU
+
+USER:
+
+Dashboard
+
+Create Test Case
+
+View Test Cases
+
+Profile
+
+Logout
+
+ADMIN:
+
+Dashboard
+
+Create Test Case
+
+View Test Cases
+
+User Management
+
+Edit Test Case
+
+Profile
+
+Logout
+
+---
+
+# 36. PROFILE
+
+Create a simple profile page.
+
+Display:
+
+* Name
+* Email
+* Role
+* Account status
+* Account creation date
+
+Allow user to change password securely.
+
+Do not allow normal users to change their role.
+
+---
+
+# 37. EMPTY STATES
+
+If there are no test cases in a module:
+
+Display:
+
+"No test cases have been created for this module yet."
+
+Provide:
+
+"Create Test Case"
+
+button if the user has permission.
+
+If there are no pending access requests:
+
+Display:
+
+"No pending access requests."
+
+---
+
+# 38. PROFESSIONAL DETAILS
+
+Add:
+
+* Breadcrumb navigation
+* Toast notifications
+* Skeleton/loading states where useful
+* Accessible form labels
+* Keyboard-friendly forms
+* Proper focus states
+* Tooltips for unfamiliar icons
+* Responsive modal dialogs
+* Pagination
+* Sorting where useful
+
+Avoid unnecessary animations.
+
+---
+
+# 39. IMPORTANT: DO NOT MAKE THESE MISTAKES
+
+Do NOT:
+
+* Build only frontend screens
+* Use fake/mock data for core functionality
+* Store the application database in localStorage
+* Allow users to manually enter test case numbers
+* Generate test case numbers using array length
+* Allow duplicate test case numbers
+* Trust browser/device time for audit timestamps
+* Give Admin access simply because "Admin" was selected during signup
+* Allow frontend-only role protection
+* Store plain-text passwords
+* Expose secrets
+* Allow normal users to edit existing test cases
+* Allow normal users to access User Management
+* Allow rejected/pending users into the application
+* Delete sequence history when a test case is deleted
+
+---
+
+# 40. FINAL EXPECTATION
+
+Build the complete application end-to-end.
+
+Before considering the project complete, test the following workflows:
+
+### Authentication
+
+1. New user signs up.
+2. Access request appears in Admin User Management.
+3. Admin approves.
+4. User can log in.
+5. User can see only USER menus.
+6. User cannot access Admin routes directly.
+
+### Rejection
+
+1. User requests access.
+2. Admin rejects.
+3. Admin must provide reason.
+4. User remains unable to access the application.
+
+### Test Case Creation
+
+1. User logs in.
+2. Creates test case.
+3. Selects GRN.
+4. Test date comes from server time.
+5. Performed By automatically comes from logged-in user.
+6. Test case number automatically becomes GRN-TC-001.
+7. Second GRN test case becomes GRN-TC-002.
+8. First LOGIN test case becomes LOGIN-TC-001.
+
+### Duplicate Prevention
+
+Test simultaneous test-case creation from multiple users.
+
+Confirm that duplicate test case numbers are impossible.
+
+### View
+
+1. Open View Test Cases.
+2. Click GRN.
+3. GRN test cases appear.
+4. Open a test case.
+5. Details and attachments are displayed correctly.
+
+### Admin Edit
+
+1. Admin opens Edit Test Case.
+2. Searches for a test case.
+3. Updates it.
+4. Changes are saved.
+5. Audit history records what changed.
+
+### Security
+
+Attempt to access Admin functionality using a USER account.
+
+Backend must reject the request.
+
+---
+
+# 41. DEVELOPMENT APPROACH
+
+Do not try to build everything as one huge unstructured component.
+
+Organize the application properly:
+
+* Authentication
+* Authorization
+* Database
+* Modules
+* Test Cases
+* Attachments
+* User Management
+* Audit History
+* UI Components
+* API routes
+* Validation
+* Utilities
+
+Use reusable components.
+
+Keep code clean and maintainable.
+
+Use TypeScript if possible.
+
+Use meaningful names.
+
+Add comments only where they are useful.
+
+---
+
+# 42. REPLIT REQUIREMENT
+
+Make the project fully runnable inside Replit.
+
+After implementation:
+
+1. Install all required dependencies.
+2. Configure the database.
+3. Run database migrations.
+4. Seed initial data if appropriate.
+5. Configure required Replit Secrets.
+6. Start the application.
+7. Verify login.
+8. Verify signup/access request.
+9. Verify admin approval.
+10. Verify test-case creation.
+11. Verify unique numbering.
+12. Verify module-wise test-case listing.
+13. Verify admin editing.
+14. Verify attachments.
+15. Verify light/dark mode.
+16. Verify responsive layout.
+
+Do not stop after creating the UI.
+
+The application must actually work end-to-end.
+
+---
+
+# 43. FINAL QUALITY BAR
+
+The final result should feel like a real internal QA/Test Management product used by a professional software testing team.
+
+Prioritize:
+
+* Reliability
+* Data integrity
+* Security
+* Clean UX
+* Accurate test-case numbering
+* Role-based access
+* Auditability
+* Maintainability
+* Professional design
+
+Build it completely and verify the main workflows before finishing.

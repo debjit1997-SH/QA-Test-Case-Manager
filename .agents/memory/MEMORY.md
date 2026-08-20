@@ -1,0 +1,1 @@
+- [QA manager build notes](qa-manager.md) — keep generated Zod validators aligned with the workspace Zod major.

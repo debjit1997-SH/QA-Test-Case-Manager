@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "QA Test Case Manager"
+description = "A professional test case management workspace for QA teams to create, review, execute, and audit module-based software testing records with role-aware access."
+version = "1.0.0"
+id = "artifacts/qa-test-case-manager"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23128
+
+[services.development]
+run = "pnpm --filter @workspace/qa-test-case-manager run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/qa-test-case-manager", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/qa-test-case-manager/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23128"
+BASE_PATH = "/"
