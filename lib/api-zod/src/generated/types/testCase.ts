@@ -12,13 +12,17 @@ export interface TestCase {
   testCaseNumber: string;
   moduleId: number;
   moduleName: string;
+  testCaseTag: string;
   testDate: Date;
   description: string;
   expectedResult: string;
   actualResult: string;
   testResult: TestResult;
+  /** @nullable */
+  passedOn: Date | null;
   performedBy: string;
   performedByUserId?: number;
+  createdByUserId?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: Date;

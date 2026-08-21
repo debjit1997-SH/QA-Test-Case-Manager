@@ -7,6 +7,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 export const roleEnum = pgEnum("qa_role", ["ADMIN", "USER"]);
 export const accountStatusEnum = pgEnum("qa_account_status", [
@@ -31,6 +32,7 @@ export const attachmentSourceEnum = pgEnum("qa_attachment_source", [
   "UPLOAD",
   "EXTERNAL_LINK",
 ]);
+export const moduleStatusEnum = pgEnum("qa_module_status", ["ACTIVE", "INACTIVE"]);
 
 export const users = pgTable("qa_users", {
   id: serial("id").primaryKey(),
@@ -59,9 +61,10 @@ export const modules = pgTable("qa_modules", {
   name: text("name").notNull(),
   code: text("code").notNull(),
   description: text("description"),
+  status: moduleStatusEnum("status").notNull().default("ACTIVE"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [uniqueIndex("qa_modules_code_idx").on(table.code)]);
+}, (table) => [uniqueIndex("qa_modules_name_code_idx").on(sql`lower(${table.name})`, sql`upper(${table.code})`)]);
 
 export const moduleSequences = pgTable("qa_module_sequences", {
   id: serial("id").primaryKey(),
@@ -74,11 +77,13 @@ export const testCases = pgTable("qa_test_cases", {
   testCaseNumber: text("test_case_number").notNull(),
   moduleId: integer("module_id").notNull().references(() => modules.id),
   testDate: timestamp("test_date", { withTimezone: true }).defaultNow().notNull(),
+  testCaseTag: text("test_case_tag").notNull().default("Untitled test case"),
   performedByUserId: integer("performed_by_user_id").notNull().references(() => users.id),
   description: text("description").notNull(),
   expectedResult: text("expected_result").notNull(),
   actualResult: text("actual_result").notNull(),
   testResult: resultEnum("test_result").notNull(),
+  passedOn: timestamp("passed_on", { withTimezone: true }),
   createdBy: integer("created_by").notNull().references(() => users.id),
   updatedBy: integer("updated_by").notNull().references(() => users.id),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

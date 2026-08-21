@@ -176,6 +176,9 @@
   );
 
   /* Fallback for older browsers */
+    [data-permissioned-detail] [data-testid="button-edit-case"] {
+      display: none;
+    }
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --sidebar-accent-border: hsl(
     from hsl(var(--sidebar-accent)) h s

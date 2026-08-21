@@ -16,12 +16,14 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, async (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
+const start = async () => {
+  try {
+    await seed();
+    app.listen(port, () => logger.info({ port }, "Server listening"));
+  } catch (err) {
+    logger.error({ err }, "Unable to initialize the server");
     process.exit(1);
   }
+};
 
-  await seed();
-  logger.info({ port }, "Server listening");
-});
+void start();

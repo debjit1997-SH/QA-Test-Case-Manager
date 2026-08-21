@@ -111,6 +111,39 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Module"
+    post:
+      operationId: createModule
+      tags: [modules]
+      summary: Create an active module (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModuleInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Module" }
+  /modules/{id}:
+    patch:
+      operationId: updateModule
+      tags: [modules]
+      summary: Edit or change module status (admin only)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ModuleUpdate" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Module" }
   /test-cases:
     get:
       operationId: listTestCases
@@ -149,6 +182,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TestCase"
+  /admin/test-cases/by-number/{number}:
+    get:
+      operationId: getAdminTestCaseByNumber
+      tags: [test-cases]
+      summary: Find one test case by exact number (admin only)
+      parameters:
+        - name: number
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Test case
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCaseDetail" }
   /test-cases/{id}:
     get:
       operationId: getTestCase
@@ -182,6 +231,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TestCase"
+    delete:
+      operationId: deleteTestCase
+      tags: [test-cases]
+      summary: Delete a test case (admin only)
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "204":
+          description: Deleted
   /users:
     get:
       operationId: listUsers
@@ -360,11 +418,12 @@ components:
         mimeType: { type: ["string", "null"] }
     Module:
       type: object
-      required: [id, name, code, testCaseCount, passCount, failCount, blockedCount]
+      required: [id, name, code, status, testCaseCount, passCount, failCount, blockedCount]
       properties:
         id: { type: integer }
         name: { type: string }
         code: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
         description: { type: ["string", "null"] }
         testCaseCount: { type: integer }
         passCount: { type: integer }
@@ -372,19 +431,22 @@ components:
         blockedCount: { type: integer }
     TestCase:
       type: object
-      required: [id, testCaseNumber, moduleId, moduleName, testDate, description, expectedResult, actualResult, testResult, performedBy, updatedAt, attachmentCount]
+      required: [id, testCaseNumber, moduleId, moduleName, testCaseTag, testDate, description, expectedResult, actualResult, testResult, passedOn, performedBy, updatedAt, attachmentCount]
       properties:
         id: { type: integer }
         testCaseNumber: { type: string }
         moduleId: { type: integer }
         moduleName: { type: string }
+        testCaseTag: { type: string }
         testDate: { type: string, format: date-time }
         description: { type: string }
         expectedResult: { type: string }
         actualResult: { type: string }
         testResult: { $ref: "#/components/schemas/TestResult" }
+        passedOn: { type: ["string", "null"], format: date-time }
         performedBy: { type: string }
         performedByUserId: { type: integer }
+        createdByUserId: { type: integer }
         createdBy: { type: string }
         updatedBy: { type: string }
         createdAt: { type: string, format: date-time }
@@ -483,9 +545,10 @@ components:
         reason: { type: string, minLength: 3 }
     TestCaseInput:
       type: object
-      required: [moduleId, description, expectedResult, actualResult, testResult]
+      required: [moduleId, testCaseTag, description, expectedResult, actualResult, testResult]
       properties:
         moduleId: { type: integer }
+        testCaseTag: { type: string, minLength: 1 }
         description: { type: string, minLength: 1 }
         expectedResult: { type: string, minLength: 1 }
         actualResult: { type: string }
@@ -506,6 +569,7 @@ components:
       type: object
       properties:
         moduleId: { type: integer }
+        testCaseTag: { type: string, minLength: 1 }
         description: { type: string, minLength: 1 }
         expectedResult: { type: string, minLength: 1 }
         actualResult: { type: string }
@@ -514,6 +578,20 @@ components:
         attachments:
           type: array
           items: { $ref: "#/components/schemas/AttachmentInput" }
+    ModuleInput:
+      type: object
+      required: [name, code]
+      properties:
+        name: { type: string, minLength: 1 }
+        code: { type: string, minLength: 1 }
+        description: { type: string }
+    ModuleUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        code: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
     UserUpdate:
       type: object
       properties:

@@ -11,6 +11,8 @@ import type { TestResult } from './testResult';
 export interface TestCaseInput {
   moduleId: number;
   /** @minLength 1 */
+  testCaseTag: string;
+  /** @minLength 1 */
   description: string;
   /** @minLength 1 */
   expectedResult: string;

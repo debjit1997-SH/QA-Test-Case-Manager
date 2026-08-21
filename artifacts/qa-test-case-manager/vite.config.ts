@@ -19,13 +19,8 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    'BASE_PATH environment variable is required but was not provided.',
-  );
-}
+const basePath = process.env.BASE_PATH || '/';
+const apiTarget = process.env.VITE_API_URL || 'http://localhost:5000';
 
 export default defineConfig({
   base: basePath,
@@ -69,6 +64,13 @@ export default defineConfig({
     strictPort: true,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
     fs: {
       strict: true,
     },
@@ -77,5 +79,12 @@ export default defineConfig({
     port,
     host: '0.0.0.0',
     allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: apiTarget,
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
 });

@@ -27,6 +27,8 @@ import type {
   ListTestCasesParams,
   LoginInput,
   Module,
+  ModuleInput,
+  ModuleUpdate,
   PasswordChangeInput,
   RejectionInput,
   Session,
@@ -588,6 +590,149 @@ export function useListModules<TData = Awaited<ReturnType<typeof listModules>>, 
 
 
 
+export const getCreateModuleUrl = () => {
+
+
+
+
+  return `/api/modules`
+}
+
+/**
+ * @summary Create an active module (admin only)
+ */
+export const createModule = async (moduleInput: ModuleInput, options?: Parameters<typeof customFetch>[1]): Promise<Module> => {
+
+  return customFetch<Module>(getCreateModuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moduleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateModuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext> => {
+
+const mutationKey = ['createModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createModule>>, {data: BodyType<ModuleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createModule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateModuleMutationResult = NonNullable<Awaited<ReturnType<typeof createModule>>>
+    export type CreateModuleMutationBody = BodyType<ModuleInput>
+    export type CreateModuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an active module (admin only)
+ */
+export const useCreateModule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createModule>>,
+        TError,
+        {data: BodyType<ModuleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateModuleMutationOptions(options));
+    }
+
+export const getUpdateModuleUrl = (id: number,) => {
+
+
+
+
+  return `/api/modules/${id}`
+}
+
+/**
+ * @summary Edit or change module status (admin only)
+ */
+export const updateModule = async (id: number,
+    moduleUpdate: ModuleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Module> => {
+
+  return customFetch<Module>(getUpdateModuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moduleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateModuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext> => {
+
+const mutationKey = ['updateModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModule>>, {id: number;data: BodyType<ModuleUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateModule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateModule>>>
+    export type UpdateModuleMutationBody = BodyType<ModuleUpdate>
+    export type UpdateModuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Edit or change module status (admin only)
+ */
+export const useUpdateModule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModule>>,
+        TError,
+        {id: number;data: BodyType<ModuleUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleMutationOptions(options));
+    }
+
 export const getListTestCasesUrl = (params?: ListTestCasesParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -743,6 +888,83 @@ export const useCreateTestCase = <TError = ErrorType<unknown>,
       return useMutation(getCreateTestCaseMutationOptions(options));
     }
 
+export const getGetAdminTestCaseByNumberUrl = (number: string,) => {
+
+
+
+
+  return `/api/admin/test-cases/by-number/${number}`
+}
+
+/**
+ * @summary Find one test case by exact number (admin only)
+ */
+export const getAdminTestCaseByNumber = async (number: string, options?: Parameters<typeof customFetch>[1]): Promise<TestCaseDetail> => {
+
+  return customFetch<TestCaseDetail>(getGetAdminTestCaseByNumberUrl(number),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTestCaseByNumberQueryKey = (number: string,) => {
+    return [
+    `/api/admin/test-cases/by-number/${number}`
+    ] as const;
+    }
+
+
+export const getGetAdminTestCaseByNumberQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTestCaseByNumber>>, TError = ErrorType<unknown>>(number: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTestCaseByNumber>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTestCaseByNumberQueryKey(number);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTestCaseByNumber>>> = ({ signal }) => getAdminTestCaseByNumber(number, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: number !== null && number !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTestCaseByNumber>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminTestCaseByNumberQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTestCaseByNumber>>>
+export type GetAdminTestCaseByNumberQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Find one test case by exact number (admin only)
+ */
+
+export function useGetAdminTestCaseByNumber<TData = Awaited<ReturnType<typeof getAdminTestCaseByNumber>>, TError = ErrorType<unknown>>(
+ number: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminTestCaseByNumber>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminTestCaseByNumberQueryOptions(number,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getGetTestCaseUrl = (id: number,) => {
 
 
@@ -890,6 +1112,77 @@ export const useUpdateTestCase = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getUpdateTestCaseMutationOptions(options));
+    }
+
+export const getDeleteTestCaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/test-cases/${id}`
+}
+
+/**
+ * @summary Delete a test case (admin only)
+ */
+export const deleteTestCase = async (id: number, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+  return customFetch<void>(getDeleteTestCaseUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTestCaseMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTestCase>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTestCase>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteTestCase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTestCase>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTestCase(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTestCaseMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTestCase>>>
+
+    export type DeleteTestCaseMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a test case (admin only)
+ */
+export const useDeleteTestCase = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTestCase>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTestCase>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteTestCaseMutationOptions(options));
     }
 
 export const getListUsersUrl = () => {

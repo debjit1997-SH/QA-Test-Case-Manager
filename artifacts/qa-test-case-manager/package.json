@@ -73,5 +73,12 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@tiptap/extension-highlight": "^3.30.2",
+    "@tiptap/react": "^3.30.2",
+    "@tiptap/starter-kit": "^3.30.2",
+    "@types/dompurify": "^3.2.0",
+    "dompurify": "^3.4.14"
   }
 }

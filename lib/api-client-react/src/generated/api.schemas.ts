@@ -78,10 +78,19 @@ export interface Attachment {
   mimeType?: string | null;
 }
 
+export type ModuleStatus = typeof ModuleStatus[keyof typeof ModuleStatus];
+
+
+export const ModuleStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
 export interface Module {
   id: number;
   name: string;
   code: string;
+  status: ModuleStatus;
   /** @nullable */
   description?: string | null;
   testCaseCount: number;
@@ -95,13 +104,17 @@ export interface TestCase {
   testCaseNumber: string;
   moduleId: number;
   moduleName: string;
+  testCaseTag: string;
   testDate: string;
   description: string;
   expectedResult: string;
   actualResult: string;
   testResult: TestResult;
+  /** @nullable */
+  passedOn: string | null;
   performedBy: string;
   performedByUserId?: number;
+  createdByUserId?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;
@@ -223,6 +236,8 @@ export interface AttachmentInput {
 export interface TestCaseInput {
   moduleId: number;
   /** @minLength 1 */
+  testCaseTag: string;
+  /** @minLength 1 */
   description: string;
   /** @minLength 1 */
   expectedResult: string;
@@ -234,6 +249,8 @@ export interface TestCaseInput {
 export interface TestCaseUpdate {
   moduleId?: number;
   /** @minLength 1 */
+  testCaseTag?: string;
+  /** @minLength 1 */
   description?: string;
   /** @minLength 1 */
   expectedResult?: string;
@@ -241,6 +258,31 @@ export interface TestCaseUpdate {
   testResult?: TestResult;
   testDate?: string;
   attachments?: AttachmentInput[];
+}
+
+export interface ModuleInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  description?: string;
+}
+
+export type ModuleUpdateStatus = typeof ModuleUpdateStatus[keyof typeof ModuleUpdateStatus];
+
+
+export const ModuleUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ModuleUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  code?: string;
+  description?: string;
+  status?: ModuleUpdateStatus;
 }
 
 export type UserUpdateAccountStatus = typeof UserUpdateAccountStatus[keyof typeof UserUpdateAccountStatus];

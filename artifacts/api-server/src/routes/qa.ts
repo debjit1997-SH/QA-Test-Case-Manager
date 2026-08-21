@@ -1,10 +1,12 @@
 import { Router, type Request, type Response } from "express";
 import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { pool } from "@workspace/db";
+import { logger } from "../lib/logger";
 
 const router = Router();
 const sessions = new Map<string, number>();
 const now = () => new Date();
+const hasText = (value: unknown) => typeof value === "string" && value.replace(/<[^>]*>/g, "").trim().length > 0;
 const publicUser = (u: any) => ({
   id: u.id, fullName: u.full_name, email: u.email, role: u.role,
   accountStatus: u.account_status, createdAt: u.created_at,
@@ -47,6 +49,7 @@ const formatAttachment = (a: any) => ({
   id: a.id, type: a.type, sourceType: a.source_type, url: a.url,
   fileName: a.file_name, mimeType: a.mime_type,
 });
+const formatModule = (r: any) => ({ id: r.id, name: r.name, code: r.code, description: r.description, status: r.status, testCaseCount: Number(r.test_case_count ?? 0), passCount: Number(r.pass_count ?? 0), failCount: Number(r.fail_count ?? 0), blockedCount: Number(r.blocked_count ?? 0) });
 const testCaseSelect = `
   select tc.*, m.name as module_name, pu.full_name as performed_by,
     cb.full_name as created_by_name, ub.full_name as updated_by_name,
@@ -56,9 +59,10 @@ const testCaseSelect = `
   join qa_users cb on cb.id=tc.created_by join qa_users ub on ub.id=tc.updated_by`;
 const formatTestCase = (r: any) => ({
   id: r.id, testCaseNumber: r.test_case_number, moduleId: r.module_id, moduleName: r.module_name,
-  testDate: r.test_date, description: r.description, expectedResult: r.expected_result,
-  actualResult: r.actual_result, testResult: r.test_result, performedBy: r.performed_by,
+  testDate: r.test_date, testCaseTag: r.test_case_tag, description: r.description, expectedResult: r.expected_result,
+  actualResult: r.actual_result, testResult: r.test_result, passedOn: r.passed_on, performedBy: r.performed_by,
   performedByUserId: r.performed_by_user_id, createdBy: r.created_by_name, updatedBy: r.updated_by_name,
+  createdByUserId: r.created_by,
   createdAt: r.created_at, updatedAt: r.updated_at, attachmentCount: r.attachment_count,
 });
 
@@ -121,38 +125,62 @@ router.get("/modules", async (req, res) => {
     count(tc.id) filter(where tc.test_result='FAIL')::int as fail_count,
     count(tc.id) filter(where tc.test_result='BLOCKED')::int as blocked_count
     from qa_modules m left join qa_test_cases tc on tc.module_id=m.id group by m.id order by m.name`);
-  res.json(result.rows.map((r: any) => ({ id: r.id, name: r.name, code: r.code, description: r.description, testCaseCount: r.test_case_count, passCount: r.pass_count, failCount: r.fail_count, blockedCount: r.blocked_count })));
+  res.json(result.rows.map(formatModule));
+});
+router.post("/modules", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const name = String(req.body.name ?? "").trim(), code = String(req.body.code ?? "").trim().toUpperCase();
+  if (!name || !code) { res.status(400).json({ error: "Module name and code are required." }); return; }
+  try { const result = await pool.query("insert into qa_modules(name,code,description) values($1,$2,$3) returning *", [name, code, req.body.description || null]); res.status(201).json(formatModule(result.rows[0])); }
+  catch { res.status(409).json({ error: "A module with this name or code already exists." }); }
+});
+router.patch("/modules/:id", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const id = Number(req.params.id), current = await pool.query("select * from qa_modules where id=$1", [id]);
+  if (!current.rows[0]) { res.status(404).json({ error: "Module not found." }); return; }
+  const next = { ...current.rows[0], name: String(req.body.name ?? current.rows[0].name).trim(), code: String(req.body.code ?? current.rows[0].code).trim().toUpperCase(), description: req.body.description ?? current.rows[0].description, status: req.body.status ?? current.rows[0].status };
+  try { const result = await pool.query("update qa_modules set name=$1,code=$2,description=$3,status=$4,updated_at=now() where id=$5 returning *", [next.name, next.code, next.description, next.status, id]); res.json(formatModule(result.rows[0])); }
+  catch { res.status(409).json({ error: "A module with this name or code already exists." }); }
 });
 router.get("/test-cases", async (req, res) => {
   const user = await requireUser(req, res); if (!user) return;
   const vals: any[] = []; const where: string[] = [];
   if (req.query.moduleId) { vals.push(Number(req.query.moduleId)); where.push(`tc.module_id=$${vals.length}`); }
   if (req.query.result) { vals.push(String(req.query.result)); where.push(`tc.test_result=$${vals.length}`); }
-  if (req.query.search) { vals.push(`%${String(req.query.search).toLowerCase()}%`); where.push(`(lower(tc.test_case_number) like $${vals.length} or lower(tc.description) like $${vals.length} or lower(pu.full_name) like $${vals.length})`); }
+  if (req.query.from) { vals.push(String(req.query.from)); where.push(`tc.test_date >= $${vals.length}::date`); }
+  if (req.query.to) { vals.push(String(req.query.to)); where.push(`tc.test_date < ($${vals.length}::date + interval '1 day')`); }
+  if (req.query.search) { vals.push(`%${String(req.query.search).toLowerCase()}%`); where.push(`(lower(tc.test_case_number) like $${vals.length} or lower(tc.test_case_tag) like $${vals.length} or lower(pu.full_name) like $${vals.length} or cast(tc.id as text) like $${vals.length})`); }
   const clause = where.length ? ` where ${where.join(" and ")}` : "";
   const page = Math.max(Number(req.query.page ?? 1), 1), pageSize = Math.min(Number(req.query.pageSize ?? 20), 100);
   const count = await pool.query(`select count(*)::int as count from qa_test_cases tc join qa_users pu on pu.id=tc.performed_by_user_id${clause}`, vals);
   const result = await pool.query(`${testCaseSelect}${clause} order by tc.updated_at desc limit ${pageSize} offset ${(page - 1) * pageSize}`, vals);
   res.json({ items: result.rows.map(formatTestCase), total: count.rows[0].count, page, pageSize });
 });
+router.get("/admin/test-cases/by-number/:number", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const result = await pool.query(`${testCaseSelect} where tc.test_case_number=$1`, [String(req.params.number).trim()]);
+  if (!result.rows[0]) { res.status(404).json({ error: "Test case not found." }); return; }
+  const [a, h] = await Promise.all([pool.query("select * from qa_attachments where test_case_id=$1 order by id", [result.rows[0].id]), pool.query("select h.*, u.full_name as changed_by from qa_test_case_history h join qa_users u on u.id=h.changed_by where h.test_case_id=$1 order by h.changed_at desc", [result.rows[0].id])]);
+  res.json({ ...formatTestCase(result.rows[0]), attachments: a.rows.map(formatAttachment), history: h.rows });
+});
 router.post("/test-cases", async (req, res) => {
   const user = await requireUser(req, res); if (!user) return;
-  const { moduleId, description, expectedResult, actualResult, testResult, attachments: incoming = [] } = req.body;
-  if (!moduleId || !description || !expectedResult || !testResult) { res.status(400).json({ error: "Module, description, expected result, and test result are required." }); return; }
+  const { moduleId, testCaseTag, description, expectedResult, actualResult, testResult, attachments: incoming = [] } = req.body;
+  if (!moduleId || !testCaseTag || !hasText(description) || !hasText(expectedResult) || !hasText(actualResult) || !testResult) { res.status(400).json({ error: "Please complete all required fields." }); return; }
   const client = await pool.connect();
   try {
     await client.query("begin");
     const moduleResult = await client.query("select * from qa_modules where id=$1 for update", [Number(moduleId)]);
-    if (!moduleResult.rows[0]) throw new Error("module");
+    if (!moduleResult.rows[0] || moduleResult.rows[0].status !== "ACTIVE") throw new Error("module");
     const module = moduleResult.rows[0];
     const seq = await client.query("insert into qa_module_sequences(module_id,next_number) values($1,2) on conflict(module_id) do update set next_number=qa_module_sequences.next_number+1 returning next_number-1 as number", [module.id]);
     const number = seq.rows[0]?.number ?? 1;
-    const tc = await client.query(`insert into qa_test_cases(test_case_number,module_id,performed_by_user_id,description,expected_result,actual_result,test_result,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$7,$3,$3) returning id`, [`${module.code}-TC-${String(number).padStart(3, "0")}`, module.id, user.id, description, expectedResult, actualResult ?? "", testResult]);
+    const tc = await client.query(`insert into qa_test_cases(test_case_number,module_id,test_case_tag,performed_by_user_id,description,expected_result,actual_result,test_result,passed_on,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$7,$8,case when $8='PASS'::qa_test_result then now() else null end,$4,$4) returning id`, [`${module.code}-TC-${String(number).padStart(3, "0")}`, module.id, testCaseTag, user.id, description, expectedResult, actualResult ?? "", testResult]);
     for (const a of incoming) await client.query("insert into qa_attachments(test_case_id,type,source_type,url,file_name,mime_type) values($1,$2,$3,$4,$5,$6)", [tc.rows[0].id, a.type, a.sourceType, a.url, a.fileName ?? null, a.mimeType ?? null]);
     await client.query("commit");
     const created = await pool.query(`${testCaseSelect} where tc.id=$1`, [tc.rows[0].id]);
     res.status(201).json(formatTestCase(created.rows[0]));
-  } catch { await client.query("rollback"); res.status(400).json({ error: "Unable to create the test case." }); } finally { client.release(); }
+  } catch (error) { await client.query("rollback").catch(() => undefined); logger.error({ err: error }, "Unable to create test case"); res.status(400).json({ error: "Could not save the test case. Please check all required fields and try again." }); } finally { client.release(); }
 });
 router.get("/test-cases/:id", async (req, res) => {
   const user = await requireUser(req, res); if (!user) return;
@@ -165,13 +193,21 @@ router.get("/test-cases/:id", async (req, res) => {
   res.json({ ...formatTestCase(result.rows[0]), attachments: a.rows.map(formatAttachment), history: h.rows.map((r: any) => ({ id: r.id, fieldName: r.field_name, previousValue: r.previous_value, newValue: r.new_value, changedBy: r.changed_by, changedAt: r.changed_at })) });
 });
 router.patch("/test-cases/:id", async (req, res) => {
-  const user = await requireAdmin(req, res); if (!user) return;
+  const user = await requireUser(req, res); if (!user) return;
   const id = Number(req.params.id); const current = await pool.query("select * from qa_test_cases where id=$1", [id]);
   if (!current.rows[0]) { res.status(404).json({ error: "Test case not found." }); return; }
-  const old = current.rows[0]; const next = { ...old, module_id: req.body.moduleId ?? old.module_id, description: req.body.description ?? old.description, expected_result: req.body.expectedResult ?? old.expected_result, actual_result: req.body.actualResult ?? old.actual_result, test_result: req.body.testResult ?? old.test_result, test_date: req.body.testDate ?? old.test_date };
-  await pool.query("update qa_test_cases set module_id=$1,description=$2,expected_result=$3,actual_result=$4,test_result=$5,test_date=$6,updated_by=$7,updated_at=now() where id=$8", [next.module_id, next.description, next.expected_result, next.actual_result, next.test_result, next.test_date, user.id, id]);
-  for (const key of ["module_id", "description", "expected_result", "actual_result", "test_result", "test_date"]) if (String(old[key]) !== String(next[key])) await pool.query("insert into qa_test_case_history(test_case_id,field_name,previous_value,new_value,changed_by) values($1,$2,$3,$4,$5)", [id, key, String(old[key]), String(next[key]), user.id]);
+  const old = current.rows[0]; const next = { ...old, module_id: req.body.moduleId ?? old.module_id, test_case_tag: req.body.testCaseTag ?? old.test_case_tag, description: req.body.description ?? old.description, expected_result: req.body.expectedResult ?? old.expected_result, actual_result: req.body.actualResult ?? old.actual_result, test_result: req.body.testResult ?? old.test_result };
+  if (!hasText(next.description) || !hasText(next.actual_result)) { res.status(400).json({ error: "Please complete all required fields." }); return; }
+  if (user.role !== "ADMIN" && old.created_by !== user.id) { res.status(403).json({ error: "You do not have permission to edit this test case." }); return; }
+  await pool.query("update qa_test_cases set module_id=$1,test_case_tag=$2,description=$3,expected_result=$4,actual_result=$5,test_result=$6,passed_on=case when $6='PASS' and $7 <> 'PASS' then now() when $6='PASS' then passed_on else null end,updated_by=$8,updated_at=now() where id=$9", [next.module_id, next.test_case_tag, next.description, next.expected_result, next.actual_result, next.test_result, old.test_result, user.id, id]);
+  for (const key of ["module_id", "test_case_tag", "description", "expected_result", "actual_result", "test_result"]) if (String(old[key]) !== String(next[key])) await pool.query("insert into qa_test_case_history(test_case_id,field_name,previous_value,new_value,changed_by) values($1,$2,$3,$4,$5)", [id, key, String(old[key]), String(next[key]), user.id]);
   const updated = await pool.query(`${testCaseSelect} where tc.id=$1`, [id]); res.json(formatTestCase(updated.rows[0]));
+});
+router.delete("/test-cases/:id", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const result = await pool.query("delete from qa_test_cases where id=$1 returning id", [Number(req.params.id)]);
+  if (!result.rows[0]) { res.status(404).json({ error: "Test case not found." }); return; }
+  res.status(204).end();
 });
 router.get("/users", async (req, res) => {
   const user = await requireAdmin(req, res); if (!user) return;

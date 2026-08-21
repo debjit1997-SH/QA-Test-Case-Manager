@@ -1,55 +1,259 @@
-import { type FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
-import { Link, Route, Switch, useLocation, useParams, Router as WouterRouter } from 'wouter';
 import {
-  Activity, ArrowLeft, ArrowRight, BarChart3, BookOpen, Check, CheckCircle2, ChevronDown,
-  ClipboardCheck, Clock3, FileEdit, FilePlus2, Files, Filter, KeyRound, LayoutDashboard,
-  LifeBuoy, LockKeyhole, LogOut, Menu, MoreHorizontal, Paperclip, PanelLeftClose,
-  PanelLeftOpen, Plus, Search, Settings2, ShieldCheck, UserCircle2, UserCog, Users,
-  X, XCircle, AlertTriangle, CircleDashed, RefreshCw, ExternalLink
-} from 'lucide-react';
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
-  getGetDashboardSummaryQueryKey, getGetProfileQueryKey, getGetSessionQueryKey,
-  getGetTestCaseQueryKey, getListModulesQueryKey, getListTestCasesQueryKey, getListUsersQueryKey,
-  useApproveAccessRequest, useChangePassword, useCreateTestCase, useGetDashboardSummary,
-  useGetProfile, useGetSession, useGetTestCase, useListModules, useListTestCases, useListUsers,
-  useLogin, useLogout, useRejectAccessRequest, useRequestAccess, useUpdateTestCase, useUpdateUser
-} from '@workspace/api-client-react';
-import type { AccessRequest, Module, TestCase, TestResult, User } from '@workspace/api-client-react';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import NotFound from '@/pages/not-found';
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
+  Link,
+  Route,
+  Switch,
+  useLocation,
+  useParams,
+  Router as WouterRouter,
+} from "wouter";
+import {
+  Activity,
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ClipboardCheck,
+  Clock3,
+  FileEdit,
+  FilePlus2,
+  Files,
+  Filter,
+  KeyRound,
+  LayoutDashboard,
+  LifeBuoy,
+  LockKeyhole,
+  LogOut,
+  Menu,
+  MoreHorizontal,
+  Paperclip,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Plus,
+  Search,
+  Settings2,
+  ShieldCheck,
+  UserCircle2,
+  UserCog,
+  Users,
+  X,
+  XCircle,
+  AlertTriangle,
+  CircleDashed,
+  RefreshCw,
+  ExternalLink,
+} from "lucide-react";
+import {
+  getGetDashboardSummaryQueryKey,
+  getGetProfileQueryKey,
+  getGetSessionQueryKey,
+  getGetTestCaseQueryKey,
+  getGetAdminTestCaseByNumberQueryKey,
+  getListModulesQueryKey,
+  getListTestCasesQueryKey,
+  getListUsersQueryKey,
+  useApproveAccessRequest,
+  useChangePassword,
+  useCreateTestCase,
+  useGetDashboardSummary,
+  useGetProfile,
+  useGetSession,
+  useGetTestCase,
+  useListModules,
+  useListTestCases,
+  useListUsers,
+  useLogin,
+  useLogout,
+  useRejectAccessRequest,
+  useRequestAccess,
+  useUpdateTestCase,
+  useUpdateUser,
+  useDeleteTestCase,
+  useCreateModule,
+  useUpdateModule,
+  useGetAdminTestCaseByNumber,
+} from "@workspace/api-client-react";
+import type {
+  AccessRequest,
+  Module,
+  TestCase,
+  TestResult,
+  User,
+  ModuleStatus,
+} from "@workspace/api-client-react";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/not-found";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Highlight from "@tiptap/extension-highlight";
+import DOMPurify from "dompurify";
 
 const queryClient = new QueryClient();
-const results: TestResult[] = ['PASS', 'FAIL', 'BLOCKED', 'NOT_TESTED'];
+const results: TestResult[] = ["PASS", "FAIL", "BLOCKED", "NOT_TESTED"];
 const resultTone: Record<string, string> = {
-  PASS: 'bg-emerald-100 text-emerald-800', FAIL: 'bg-red-100 text-red-800',
-  BLOCKED: 'bg-amber-100 text-amber-800', NOT_TESTED: 'bg-slate-100 text-slate-700'
+  PASS: "bg-emerald-100 text-emerald-800",
+  FAIL: "bg-red-100 text-red-800",
+  BLOCKED: "bg-amber-100 text-amber-800",
+  NOT_TESTED: "bg-slate-100 text-slate-700",
 };
 const resultIcon: Record<string, ReactNode> = {
-  PASS: <CheckCircle2 size={14} />, FAIL: <XCircle size={14} />,
-  BLOCKED: <AlertTriangle size={14} />, NOT_TESTED: <CircleDashed size={14} />
+  PASS: <CheckCircle2 size={14} />,
+  FAIL: <XCircle size={14} />,
+  BLOCKED: <AlertTriangle size={14} />,
+  NOT_TESTED: <CircleDashed size={14} />,
 };
 
 function formatDate(value?: string | null) {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(value));
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+function formatDateTime(value?: string | null) {
+  if (!value) return "Not Passed";
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Kolkata",
+  }).format(new Date(value));
+}
+function plainText(value?: string | null) {
+  if (!value) return "";
+  const element = document.createElement("div");
+  element.innerHTML = DOMPurify.sanitize(value, { ALLOWED_TAGS: [] });
+  return element.textContent || "";
+}
+function RichTextView({
+  value,
+  fallback = "Not provided.",
+}: {
+  value?: string | null;
+  fallback?: string;
+}) {
+  if (!value || !plainText(value).trim()) return <span>{fallback}</span>;
+  return (
+    <div
+      className="prose prose-sm max-w-none dark:prose-invert [&_mark]:rounded [&_mark]:bg-yellow-200 [&_mark]:px-1"
+      dangerouslySetInnerHTML={{
+        __html: DOMPurify.sanitize(value, {
+          ALLOWED_TAGS: [
+            "p",
+            "br",
+            "strong",
+            "b",
+            "em",
+            "i",
+            "mark",
+            "ul",
+            "ol",
+            "li",
+          ],
+        }),
+      }}
+    />
+  );
 }
 function initials(value?: string) {
-  return (value || 'QA').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+  return (value || "QA")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 function StatusBadge({ value }: { value: string }) {
-  return <span data-testid={`status-${value.toLowerCase()}`} className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${resultTone[value] || 'bg-stone-100 text-stone-700'}`}>{resultIcon[value]}{value.replace('_', ' ')}</span>;
+  return (
+    <span
+      data-testid={`status-${value.toLowerCase()}`}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold ${resultTone[value] || "bg-stone-100 text-stone-700"}`}
+    >
+      {resultIcon[value]}
+      {value.replace("_", " ")}
+    </span>
+  );
 }
-function LoadingState({ label = 'Loading workspace data' }: { label?: string }) {
-  return <div className="qa-card animate-pulse rounded-xl p-6" data-testid="state-loading"><div className="h-3 w-28 rounded bg-muted" /><div className="mt-4 h-8 w-2/3 rounded bg-muted" /><div className="mt-6 h-24 rounded bg-muted" /><p className="mt-4 qa-label text-muted-foreground">{label}</p></div>;
+function LoadingState({
+  label = "Loading workspace data",
+}: {
+  label?: string;
+}) {
+  return (
+    <div
+      className="qa-card animate-pulse rounded-xl p-6"
+      data-testid="state-loading"
+    >
+      <div className="h-3 w-28 rounded bg-muted" />
+      <div className="mt-4 h-8 w-2/3 rounded bg-muted" />
+      <div className="mt-6 h-24 rounded bg-muted" />
+      <p className="mt-4 qa-label text-muted-foreground">{label}</p>
+    </div>
+  );
 }
 function ErrorState({ retry }: { retry?: () => void }) {
-  return <div className="qa-card rounded-xl border-dashed p-10 text-center" data-testid="state-error"><AlertTriangle className="mx-auto text-primary" size={28} /><h3 className="mt-3 font-bold">We could not load this view</h3><p className="mt-1 text-sm text-muted-foreground">The service may be taking a moment. Try again.</p>{retry && <button data-testid="button-retry" onClick={retry} className="mt-5 inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background"><RefreshCw size={15} /> Retry</button>}</div>;
+  return (
+    <div
+      className="qa-card rounded-xl border-dashed p-10 text-center"
+      data-testid="state-error"
+    >
+      <AlertTriangle className="mx-auto text-primary" size={28} />
+      <h3 className="mt-3 font-bold">We could not load this view</h3>
+      <p className="mt-1 text-sm text-muted-foreground">
+        The service may be taking a moment. Try again.
+      </p>
+      {retry && (
+        <button
+          data-testid="button-retry"
+          onClick={retry}
+          className="mt-5 inline-flex items-center gap-2 rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background"
+        >
+          <RefreshCw size={15} /> Retry
+        </button>
+      )}
+    </div>
+  );
 }
-function EmptyState({ title, detail, action }: { title: string; detail: string; action?: ReactNode }) {
-  return <div className="qa-card rounded-xl border-dashed p-12 text-center" data-testid="state-empty"><div className="mx-auto grid size-12 place-items-center rounded-full bg-secondary text-secondary-foreground"><Files size={21} /></div><h3 className="mt-4 font-bold">{title}</h3><p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">{detail}</p>{action && <div className="mt-5">{action}</div>}</div>;
+function EmptyState({
+  title,
+  detail,
+  action,
+}: {
+  title: string;
+  detail: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div
+      className="qa-card rounded-xl border-dashed p-12 text-center"
+      data-testid="state-empty"
+    >
+      <div className="mx-auto grid size-12 place-items-center rounded-full bg-secondary text-secondary-foreground">
+        <Files size={21} />
+      </div>
+      <h3 className="mt-4 font-bold">{title}</h3>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+        {detail}
+      </p>
+      {action && <div className="mt-5">{action}</div>}
+    </div>
+  );
 }
 
 function AuthGateway() {
@@ -57,151 +261,2719 @@ function AuthGateway() {
   const login = useLogin();
   const request = useRequestAccess();
   const [, setLocation] = useLocation();
-  const [mode, setMode] = useState<'login' | 'request'>('login');
-  const [notice, setNotice] = useState('');
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', requestedRole: 'USER' as 'USER' | 'ADMIN' });
-  if (session.isLoading) return <div className="qa-shell grid place-items-center p-6"><LoadingState label="Checking your session" /></div>;
-  useEffect(() => { if (session.data?.authenticated) setLocation('/dashboard'); }, [session.data?.authenticated, setLocation]);
+  const [mode, setMode] = useState<"login" | "request">("login");
+  const [notice, setNotice] = useState("");
+  const [form, setForm] = useState({
+    fullName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    requestedRole: "USER" as "USER" | "ADMIN",
+  });
+  useEffect(() => {
+    if (session.data?.authenticated) setLocation("/dashboard");
+  }, [session.data?.authenticated, setLocation]);
+  if (session.isLoading)
+    return (
+      <div className="qa-shell grid place-items-center p-6">
+        <LoadingState label="Checking your session" />
+      </div>
+    );
   if (session.data?.authenticated) return null;
   const submit = (event: FormEvent) => {
-    event.preventDefault(); setNotice('');
-    if (mode === 'login') {
-      login.mutate({ data: { email: form.email, password: form.password } }, { onSuccess: () => setLocation('/dashboard'), onError: () => setNotice('Sign-in details were not accepted. Check your email and password.') });
+    event.preventDefault();
+    setNotice("");
+    if (mode === "login") {
+      login.mutate(
+        { data: { email: form.email, password: form.password } },
+        {
+          onSuccess: async () => {
+            await queryClient.invalidateQueries({
+              queryKey: getGetSessionQueryKey(),
+            });
+            setLocation("/dashboard");
+          },
+          onError: () =>
+            setNotice(
+              "Sign-in details were not accepted. Check your email and password.",
+            ),
+        },
+      );
     } else {
-      if (form.password !== form.confirmPassword) { setNotice('Passwords must match.'); return; }
-      request.mutate({ data: form }, { onSuccess: () => setNotice('Request received. An administrator will review your access.'), onError: () => setNotice('Could not submit the request. Please try again.') });
+      if (form.password !== form.confirmPassword) {
+        setNotice("Passwords must match.");
+        return;
+      }
+      request.mutate(
+        { data: form },
+        {
+          onSuccess: () =>
+            setNotice(
+              "Request received. An administrator will review your access.",
+            ),
+          onError: () =>
+            setNotice("Could not submit the request. Please try again."),
+        },
+      );
     }
   };
-  return <main className="qa-grid min-h-[100dvh] bg-background p-4 text-foreground md:p-8" data-testid="auth-gateway">
-    <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-6xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl md:grid-cols-[.9fr_1.1fr]">
-      <section className="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground md:flex md:flex-col md:justify-between">
-        <div className="absolute -right-28 -top-24 size-72 rounded-full border-[32px] border-primary/20" /><div className="absolute -bottom-28 -left-20 size-80 rounded-full border-[40px] border-accent/10" />
-        <div className="relative"><Brand dark /><p className="qa-label mt-16 text-sidebar-primary">Quality operations / 04</p><h1 className="mt-5 max-w-md text-5xl font-extrabold leading-[1.03] tracking-[-.05em]">Make every release easier to trust.</h1><p className="mt-6 max-w-sm text-sm leading-6 text-sidebar-foreground/65">A focused workspace for test evidence, review decisions, and the small details that keep software honest.</p></div>
-        <div className="relative border-t border-sidebar-border pt-5 text-xs text-sidebar-foreground/55"><span className="qa-mono">INTERNAL QA WORKSPACE</span><span className="float-right">v0.1</span></div>
-      </section>
-      <section className="flex flex-col justify-center p-6 sm:p-12">
-        <div className="md:hidden"><Brand /></div><div className="mt-8 md:mt-0"><p className="qa-label text-primary">Secure workspace</p><h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em]">{mode === 'login' ? 'Welcome back.' : 'Request access.'}</h2><p className="mt-2 text-sm text-muted-foreground">{mode === 'login' ? 'Sign in to continue to the quality desk.' : 'Tell an administrator who you are and what you need.'}</p></div>
-        <form onSubmit={submit} className="mt-8 space-y-4" data-testid={`form-${mode}`}>
-          {mode === 'request' && <Field label="Full name"><input data-testid="input-full-name" required minLength={2} value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} placeholder="Mara Chen" /></Field>}
-          <Field label="Work email"><input data-testid="input-email" required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@company.com" /></Field>
-          <Field label="Password"><input data-testid="input-password" required minLength={8} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="8+ characters" /></Field>
-          {mode === 'request' && <><Field label="Confirm password"><input data-testid="input-confirm-password" required minLength={8} type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} placeholder="Repeat password" /></Field><Field label="Requested role"><select data-testid="select-requested-role" value={form.requestedRole} onChange={(e) => setForm({ ...form, requestedRole: e.target.value as 'USER' | 'ADMIN' })}><option value="USER">Tester</option><option value="ADMIN">Administrator</option></select></Field></>}
-          {notice && <div className="rounded-lg border border-primary/25 bg-primary/10 p-3 text-sm text-foreground" data-testid="text-auth-notice">{notice}</div>}
-          <button data-testid="button-auth-submit" disabled={login.isPending || request.isPending} className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-50">{mode === 'login' ? <LockKeyhole size={16} /> : <ArrowRight size={16} />}{mode === 'login' ? 'Sign in' : 'Submit access request'}</button>
-        </form>
-        <div className="mt-6 flex items-center justify-between border-t border-border pt-5 text-sm"><span className="text-muted-foreground">{mode === 'login' ? 'Need an account?' : 'Already have access?'}</span><button data-testid="button-toggle-auth-mode" onClick={() => { setMode(mode === 'login' ? 'request' : 'login'); setNotice(''); }} className="font-bold text-primary">{mode === 'login' ? 'Request access' : 'Back to sign in'}</button></div>
-      </section>
-    </div>
-  </main>;
+  return (
+    <main
+      className="qa-grid min-h-[100dvh] bg-background p-4 text-foreground md:p-8"
+      data-testid="auth-gateway"
+    >
+      <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-6xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl md:grid-cols-[.9fr_1.1fr]">
+        <section className="relative hidden overflow-hidden bg-sidebar p-10 text-sidebar-foreground md:flex md:flex-col md:justify-between">
+          <div className="absolute -right-28 -top-24 size-72 rounded-full border-[32px] border-primary/20" />
+          <div className="absolute -bottom-28 -left-20 size-80 rounded-full border-[40px] border-accent/10" />
+          <div className="relative">
+            <Brand dark />
+            <p className="qa-label mt-16 text-sidebar-primary">
+              Quality operations / 04
+            </p>
+            <h1 className="mt-5 max-w-md text-5xl font-extrabold leading-[1.03] tracking-[-.05em]">
+              Make every release easier to trust.
+            </h1>
+            <p className="mt-6 max-w-sm text-sm leading-6 text-sidebar-foreground/65">
+              A focused workspace for test evidence, review decisions, and the
+              small details that keep software honest.
+            </p>
+          </div>
+          <div className="relative border-t border-sidebar-border pt-5 text-xs text-sidebar-foreground/55">
+            <span className="qa-mono">INTERNAL QA WORKSPACE</span>
+            <span className="float-right">v0.1</span>
+          </div>
+        </section>
+        <section className="flex flex-col justify-center p-6 sm:p-12">
+          <div className="md:hidden">
+            <Brand />
+          </div>
+          <div className="mt-8 md:mt-0">
+            <p className="qa-label text-primary">Secure workspace</p>
+            <h2 className="mt-3 text-3xl font-extrabold tracking-[-.04em]">
+              {mode === "login" ? "Welcome back." : "Request access."}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {mode === "login"
+                ? "Sign in to continue to the quality desk."
+                : "Tell an administrator who you are and what you need."}
+            </p>
+          </div>
+          <form
+            onSubmit={submit}
+            className="mt-8 space-y-4"
+            data-testid={`form-${mode}`}
+          >
+            {mode === "request" && (
+              <Field label="Full name">
+                <input
+                  data-testid="input-full-name"
+                  required
+                  minLength={2}
+                  value={form.fullName}
+                  onChange={(e) =>
+                    setForm({ ...form, fullName: e.target.value })
+                  }
+                  placeholder="Mara Chen"
+                />
+              </Field>
+            )}
+            <Field label="Work email">
+              <input
+                data-testid="input-email"
+                required
+                type="email"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="you@company.com"
+              />
+            </Field>
+            <Field label="Password">
+              <input
+                data-testid="input-password"
+                required
+                minLength={8}
+                type="password"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                placeholder="8+ characters"
+              />
+            </Field>
+            {mode === "request" && (
+              <>
+                <Field label="Confirm password">
+                  <input
+                    data-testid="input-confirm-password"
+                    required
+                    minLength={8}
+                    type="password"
+                    value={form.confirmPassword}
+                    onChange={(e) =>
+                      setForm({ ...form, confirmPassword: e.target.value })
+                    }
+                    placeholder="Repeat password"
+                  />
+                </Field>
+                <Field label="Requested role">
+                  <select
+                    data-testid="select-requested-role"
+                    value={form.requestedRole}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        requestedRole: e.target.value as "USER" | "ADMIN",
+                      })
+                    }
+                  >
+                    <option value="USER">Tester</option>
+                    <option value="ADMIN">Administrator</option>
+                  </select>
+                </Field>
+              </>
+            )}
+            {notice && (
+              <div
+                className="rounded-lg border border-primary/25 bg-primary/10 p-3 text-sm text-foreground"
+                data-testid="text-auth-notice"
+              >
+                {notice}
+              </div>
+            )}
+            <button
+              data-testid="button-auth-submit"
+              disabled={login.isPending || request.isPending}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-50"
+            >
+              {mode === "login" ? (
+                <LockKeyhole size={16} />
+              ) : (
+                <ArrowRight size={16} />
+              )}
+              {mode === "login" ? "Sign in" : "Submit access request"}
+            </button>
+          </form>
+          <div className="mt-6 flex items-center justify-between border-t border-border pt-5 text-sm">
+            <span className="text-muted-foreground">
+              {mode === "login" ? "Need an account?" : "Already have access?"}
+            </span>
+            <button
+              data-testid="button-toggle-auth-mode"
+              onClick={() => {
+                setMode(mode === "login" ? "request" : "login");
+                setNotice("");
+              }}
+              className="font-bold text-primary"
+            >
+              {mode === "login" ? "Request access" : "Back to sign in"}
+            </button>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
 
 function Brand({ dark = false }: { dark?: boolean }) {
-  return <Link href="/" className="inline-flex items-center gap-3" data-testid="link-brand"><span className={`grid size-9 place-items-center rounded-lg ${dark ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'bg-primary text-primary-foreground'}`}><ShieldCheck size={19} /></span><span><span className="block text-sm font-extrabold tracking-[-.03em]">VERITY</span><span className={`qa-label block ${dark ? 'text-sidebar-foreground/45' : 'text-muted-foreground'}`}>QA desk</span></span></Link>;
+  return (
+    <Link
+      href="/"
+      className="inline-flex items-center gap-3"
+      data-testid="link-brand"
+    >
+      <span
+        className={`grid size-9 place-items-center rounded-lg ${dark ? "bg-sidebar-primary text-sidebar-primary-foreground" : "bg-primary text-primary-foreground"}`}
+      >
+        <ShieldCheck size={19} />
+      </span>
+      <span>
+        <span className="block text-sm font-extrabold tracking-[-.03em]">
+          VERITY
+        </span>
+        <span
+          className={`qa-label block ${dark ? "text-sidebar-foreground/45" : "text-muted-foreground"}`}
+        >
+          QA desk
+        </span>
+      </span>
+    </Link>
+  );
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="block"><span className="qa-label mb-2 block text-muted-foreground">{label}</span>{children}</label>;
+  return (
+    <label className="block">
+      <span className="qa-label mb-2 block text-muted-foreground">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function RichTextEditor({
+  label,
+  value,
+  onChange,
+  required = false,
+  testId,
+  evidence,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  testId: string;
+  evidence?: {
+    imageUrl: string;
+    videoUrl: string;
+    setImageUrl: (value: string) => void;
+    setVideoUrl: (value: string) => void;
+  };
+}) {
+  const editor = useEditor({
+    extensions: [StarterKit, Highlight],
+    content: value,
+    onUpdate: ({ editor: next }) => onChange(next.getHTML()),
+  });
+  useEffect(() => {
+    if (editor && value !== editor.getHTML())
+      editor.commands.setContent(value || "<p></p>");
+  }, [editor, value]);
+  return (
+    <Field label={label}>
+      <div
+        data-testid={testId}
+        className={`overflow-hidden rounded-lg border ${required && !value.replace(/<[^>]*>/g, "").trim() ? "border-red-400" : "border-border"}`}
+      >
+        <div className="flex gap-1 border-b border-border bg-muted/40 p-2">
+          <button
+            type="button"
+            onClick={() => editor?.chain().focus().toggleBold().run()}
+            className="rounded px-2 py-1 text-sm font-bold hover:bg-background"
+          >
+            B
+          </button>
+          <button
+            type="button"
+            onClick={() => editor?.chain().focus().toggleHighlight().run()}
+            className="rounded px-2 py-1 text-sm hover:bg-background"
+          >
+            Highlight
+          </button>
+          <button
+            type="button"
+            onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            className="rounded px-2 py-1 text-sm hover:bg-background"
+          >
+            List
+          </button>
+        </div>
+        <EditorContent
+          editor={editor}
+          className="min-h-32 p-3 text-sm [&_.ProseMirror]:outline-none [&_ul]:ml-5 [&_ul]:list-disc"
+        />
+      </div>
+      {required && !value.replace(/<[^>]*>/g, "").trim() && (
+        <span className="mt-1 block text-xs text-red-600">
+          {label} is required.
+        </span>
+      )}
+      {evidence && (
+        <div className="mt-4 space-y-3">
+          <Field label="Image URL">
+            <input
+              type="url"
+              value={evidence.imageUrl}
+              onChange={(event) => evidence.setImageUrl(event.target.value)}
+              placeholder="https://example.com/image.png"
+            />
+          </Field>
+          <Field label="Video URL">
+            <input
+              type="url"
+              value={evidence.videoUrl}
+              onChange={(event) => evidence.setVideoUrl(event.target.value)}
+              placeholder="https://example.com/video.mp4"
+            />
+          </Field>
+        </div>
+      )}
+    </Field>
+  );
 }
 
 const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/test-cases', label: 'Test cases', icon: ClipboardCheck },
-  { href: '/create-test-case', label: 'Create case', icon: FilePlus2 },
-  { href: '/edit-test-case', label: 'Edit cases', icon: FileEdit, admin: true },
-  { href: '/user-management', label: 'User management', icon: UserCog, admin: true },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/test-cases", label: "Test cases", icon: ClipboardCheck },
+  { href: "/create-test-case", label: "Create Test Case", icon: FilePlus2 },
+  { href: "/edit-test-case", label: "Edit cases", icon: FileEdit, admin: true },
+  {
+    href: "/module-management",
+    label: "Module Management",
+    icon: Settings2,
+    admin: true,
+  },
+  {
+    href: "/user-management",
+    label: "User management",
+    icon: UserCog,
+    admin: true,
+  },
 ];
-function AppShell({ children, user }: { children: ReactNode; user?: User | null }) {
+function AppShell({
+  children,
+  user,
+}: {
+  children: ReactNode;
+  user?: User | null;
+}) {
   const [location, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const logout = useLogout();
   const queryClient = useQueryClient();
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = user?.role === "ADMIN";
   const visible = navItems.filter((item) => !item.admin || isAdmin);
-  const doLogout = () => logout.mutate(undefined, { onSuccess: () => { queryClient.clear(); setLocation('/'); } });
-  return <div className="qa-shell flex" data-testid="app-shell">
-    {mobileOpen && <button data-testid="button-close-mobile-nav" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-20 bg-foreground/30 md:hidden" aria-label="Close navigation" />}
-    <aside className={`qa-sidebar fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-sidebar-border p-4 transition-transform md:static md:translate-x-0 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}><div className="flex items-center justify-between px-2 py-2"><Brand dark /><button data-testid="button-close-sidebar" onClick={() => setMobileOpen(false)} className="rounded-md p-1 text-sidebar-foreground/60 md:hidden"><PanelLeftClose size={17} /></button></div><div className="mt-10 px-3 qa-label text-sidebar-foreground/35">Workspace</div><nav className="mt-2 space-y-1">{visible.map(({ href, label, icon: Icon }) => <Link key={href} href={href} onClick={() => setMobileOpen(false)} data-testid={`link-nav-${label.toLowerCase().replace(' ', '-')}`} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${location === href ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><Icon size={17} />{label}</Link>)}</nav><div className="mt-auto space-y-1"><Link href="/profile" data-testid="link-nav-profile" className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold ${location === '/profile' ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}`}><UserCircle2 size={17} />Profile</Link><button data-testid="button-logout" onClick={doLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"><LogOut size={17} />Sign out</button><div className="mt-4 flex items-center gap-2 border-t border-sidebar-border px-3 pt-4"><Avatar name={user?.fullName} /><div className="min-w-0"><div className="truncate text-xs font-bold">{user?.fullName || 'Signed in user'}</div><div className="qa-label text-sidebar-foreground/40">{user?.role || 'USER'}</div></div></div></div></aside>
-    <div className="min-w-0 flex-1"><header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-8"><div className="flex items-center gap-3"><button data-testid="button-open-sidebar" onClick={() => setMobileOpen(true)} className="rounded-md p-2 hover:bg-muted md:hidden"><Menu size={19} /></button><div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"><span className="qa-mono">VERITY</span><span>/</span><span>Quality operations</span></div></div><div className="flex items-center gap-2"><span className="hidden rounded-full border border-border px-2.5 py-1 qa-label text-muted-foreground sm:inline-flex"><span className="mr-1.5 size-1.5 self-center rounded-full bg-emerald-500" /> System healthy</span><Link href="/profile" data-testid="link-header-profile" className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-extrabold text-secondary-foreground">{initials(user?.fullName)}</Link></div></header><main className="mx-auto max-w-[1500px] p-4 md:p-8">{children}</main></div>
-  </div>;
+  const doLogout = () =>
+    logout.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.clear();
+        setLocation("/");
+      },
+    });
+  return (
+    <div className="qa-shell flex" data-testid="app-shell">
+      {mobileOpen && (
+        <button
+          data-testid="button-close-mobile-nav"
+          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-20 bg-foreground/30 md:hidden"
+          aria-label="Close navigation"
+        />
+      )}
+      <aside
+        className={`qa-sidebar fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-sidebar-border p-4 transition-transform md:static md:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between px-2 py-2">
+          <Brand dark />
+          <button
+            data-testid="button-close-sidebar"
+            onClick={() => setMobileOpen(false)}
+            className="rounded-md p-1 text-sidebar-foreground/60 md:hidden"
+          >
+            <PanelLeftClose size={17} />
+          </button>
+        </div>
+        <div className="mt-10 px-3 qa-label text-sidebar-foreground/35">
+          Workspace
+        </div>
+        <nav className="mt-2 space-y-1">
+          {visible.map(({ href, label, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setMobileOpen(false)}
+              data-testid={`link-nav-${label.toLowerCase().replace(" ", "-")}`}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors ${location === href ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+            >
+              <Icon size={17} />
+              {label}
+            </Link>
+          ))}
+        </nav>
+        <div className="mt-auto space-y-1">
+          <Link
+            href="/profile"
+            data-testid="link-nav-profile"
+            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold ${location === "/profile" ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"}`}
+          >
+            <UserCircle2 size={17} />
+            Profile
+          </Link>
+          <button
+            data-testid="button-logout"
+            onClick={doLogout}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-sidebar-foreground/65 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <LogOut size={17} />
+            Sign out
+          </button>
+          <div className="mt-4 flex items-center gap-2 border-t border-sidebar-border px-3 pt-4">
+            <Avatar name={user?.fullName} />
+            <div className="min-w-0">
+              <div className="truncate text-xs font-bold">
+                {user?.fullName || "Signed in user"}
+              </div>
+              <div className="qa-label text-sidebar-foreground/40">
+                {user?.role || "USER"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <div className="min-w-0 flex-1">
+        <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-md md:px-8">
+          <div className="flex items-center gap-3">
+            <button
+              data-testid="button-open-sidebar"
+              onClick={() => setMobileOpen(true)}
+              className="rounded-md p-2 hover:bg-muted md:hidden"
+            >
+              <Menu size={19} />
+            </button>
+            <div className="hidden items-center gap-2 text-xs text-muted-foreground sm:flex">
+              <span className="qa-mono">VERITY</span>
+              <span>/</span>
+              <span>Quality operations</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden rounded-full border border-border px-2.5 py-1 qa-label text-muted-foreground sm:inline-flex">
+              <span className="mr-1.5 size-1.5 self-center rounded-full bg-emerald-500" />{" "}
+              System healthy
+            </span>
+            <Link
+              href="/profile"
+              data-testid="link-header-profile"
+              className="grid size-9 place-items-center rounded-full bg-secondary text-xs font-extrabold text-secondary-foreground"
+            >
+              {initials(user?.fullName)}
+            </Link>
+          </div>
+        </header>
+        <main className="mx-auto max-w-[1500px] p-4 md:p-8">{children}</main>
+      </div>
+    </div>
+  );
 }
-function Avatar({ name }: { name?: string }) { return <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-primary/20 qa-mono text-xs font-bold text-sidebar-primary">{initials(name)}</span>; }
-function PageHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description?: string; action?: ReactNode }) {
-  return <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end"><div><p className="qa-label text-primary">{eyebrow}</p><h1 className="mt-2 text-3xl font-extrabold tracking-[-.045em] md:text-4xl" data-testid="text-page-title">{title}</h1>{description && <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{description}</p>}</div>{action}</div>;
+function Avatar({ name }: { name?: string }) {
+  return (
+    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sidebar-primary/20 qa-mono text-xs font-bold text-sidebar-primary">
+      {initials(name)}
+    </span>
+  );
 }
-function Button({ children, onClick, href, secondary = false, icon, testId = 'button-action', type = 'button' }: { children: ReactNode; onClick?: () => void; href?: string; secondary?: boolean; icon?: ReactNode; testId?: string; type?: 'button' | 'submit' }) {
-  const className = `inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-transform hover:-translate-y-0.5 ${secondary ? 'border border-border bg-card text-foreground hover:bg-muted' : 'bg-primary text-primary-foreground'}`;
-  if (href) return <Link href={href} data-testid={testId} className={className}>{icon}{children}</Link>;
-  return <button type={type} onClick={onClick} data-testid={testId} className={className}>{icon}{children}</button>;
+function PageHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
+      <div>
+        <p className="qa-label text-primary">{eyebrow}</p>
+        <h1
+          className="mt-2 text-3xl font-extrabold tracking-[-.045em] md:text-4xl"
+          data-testid="text-page-title"
+        >
+          {title}
+        </h1>
+        {description && (
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+            {description}
+          </p>
+        )}
+      </div>
+      {action}
+    </div>
+  );
 }
-function Metric({ label, value, detail, tone = 'primary', icon }: { label: string; value: number | string; detail: string; tone?: string; icon: ReactNode }) {
-  return <div className="qa-card rounded-xl p-5" data-testid={`metric-${label.toLowerCase().replaceAll(' ', '-')}`}><div className="flex items-start justify-between"><span className={`grid size-9 place-items-center rounded-lg ${tone === 'primary' ? 'bg-primary/12 text-primary' : tone === 'green' ? 'bg-emerald-100 text-emerald-700' : tone === 'red' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{icon}</span><span className="qa-label text-muted-foreground">live</span></div><div className="mt-5 text-3xl font-extrabold tracking-[-.05em]">{value}</div><div className="mt-1 text-sm font-semibold">{label}</div><div className="mt-1 text-xs text-muted-foreground">{detail}</div></div>;
+function Button({
+  children,
+  onClick,
+  href,
+  secondary = false,
+  icon,
+  testId = "button-action",
+  type = "button",
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  href?: string;
+  secondary?: boolean;
+  icon?: ReactNode;
+  testId?: string;
+  type?: "button" | "submit";
+}) {
+  const className = `inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-transform hover:-translate-y-0.5 ${secondary ? "border border-border bg-card text-foreground hover:bg-muted" : "bg-primary text-primary-foreground"}`;
+  if (href)
+    return (
+      <Link href={href} data-testid={testId} className={className}>
+        {icon}
+        {children}
+      </Link>
+    );
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      data-testid={testId}
+      className={className}
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+function Metric({
+  label,
+  value,
+  detail,
+  tone = "primary",
+  icon,
+}: {
+  label: string;
+  value: number | string;
+  detail: string;
+  tone?: string;
+  icon: ReactNode;
+}) {
+  return (
+    <div
+      className="qa-card rounded-xl p-5"
+      data-testid={`metric-${label.toLowerCase().replaceAll(" ", "-")}`}
+    >
+      <div className="flex items-start justify-between">
+        <span
+          className={`grid size-9 place-items-center rounded-lg ${tone === "primary" ? "bg-primary/12 text-primary" : tone === "green" ? "bg-emerald-100 text-emerald-700" : tone === "red" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}
+        >
+          {icon}
+        </span>
+        <span className="qa-label text-muted-foreground">live</span>
+      </div>
+      <div className="mt-5 text-3xl font-extrabold tracking-[-.05em]">
+        {value}
+      </div>
+      <div className="mt-1 text-sm font-semibold">{label}</div>
+      <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
+    </div>
+  );
+}
+
+function CreateTestCase() {
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Test cases"
+        title="Create Test Case"
+        description="Start a new verification record from the controlled test case form."
+        action={
+          <Button
+            href="/create-test-case/new"
+            icon={<Plus size={16} />}
+            testId="button-new-test-case"
+          >
+            New Test Case
+          </Button>
+        }
+      />
+      <div className="qa-card rounded-xl p-8">
+        <h2 className="text-xl font-extrabold">Ready to record a test?</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          The test case number is generated automatically after you choose an
+          active module.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ModuleManagement() {
+  const query = useListModules();
+  const create = useCreateModule();
+  const update = useUpdateModule();
+  const client = useQueryClient();
+  const [form, setForm] = useState({ name: "", code: "", description: "" });
+  const [editing, setEditing] = useState<number | null>(null);
+  const [notice, setNotice] = useState("");
+  const refresh = () =>
+    client.invalidateQueries({ queryKey: getListModulesQueryKey() });
+  if (query.isLoading) return <LoadingState label="Loading modules" />;
+  if (query.isError) return <ErrorState retry={query.refetch} />;
+  const failed = () =>
+    setNotice(
+      "Module could not be saved. Check that the name and code are unique.",
+    );
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (create.isPending || update.isPending) return;
+    setNotice("");
+    const data = {
+      name: form.name.trim(),
+      code: form.code.trim().toUpperCase(),
+      description: form.description.trim() || undefined,
+    };
+    const done = (saved: Module) => {
+      client.setQueryData(
+        getListModulesQueryKey(),
+        (current: Module[] | undefined) =>
+          editing === null
+            ? [...(current || []), saved]
+            : (current || []).map((item) =>
+                item.id === saved.id ? saved : item,
+              ),
+      );
+      setForm({ name: "", code: "", description: "" });
+      setEditing(null);
+      setNotice("Module saved successfully.");
+      refresh();
+    };
+    const failed = () =>
+      setNotice(
+        "Module could not be saved. Check that the name and code are unique.",
+      );
+    if (editing !== null)
+      update.mutate(
+        { id: editing, data },
+        { onSuccess: done, onError: failed },
+      );
+    else create.mutate({ data }, { onSuccess: done, onError: failed });
+  };
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Administration"
+        title="Module Management"
+        description="Control the organization-specific modules available to testers."
+      />
+      <form
+        onSubmit={submit}
+        className="qa-card mb-5 grid gap-3 rounded-xl p-5 md:grid-cols-[1fr_160px_1fr_auto]"
+        data-testid="form-module"
+      >
+        <input
+          required
+          placeholder="Module name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <input
+          required
+          placeholder="Module code"
+          value={form.code}
+          onChange={(e) => setForm({ ...form, code: e.target.value })}
+        />
+        <input
+          placeholder="Description"
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+        />
+        <Button type="submit" icon={<Plus size={15} />}>
+          {create.isPending || update.isPending
+            ? "Saving..."
+            : editing !== null
+              ? "Save module"
+              : "Add New Module"}
+        </Button>
+      </form>
+      {notice && (
+        <p
+          className="mb-5 rounded-lg border border-border bg-card p-3 text-sm"
+          role="status"
+        >
+          {notice}
+        </p>
+      )}
+      <div className="qa-card overflow-hidden rounded-xl">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[700px] text-left text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/45 qa-label text-muted-foreground">
+                <th className="px-5 py-4">Module name</th>
+                <th className="px-5 py-4">Module code</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">Test case count</th>
+                <th className="px-5 py-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(query.data || []).map((module) => (
+                <tr
+                  key={module.id}
+                  className="border-b border-border last:border-0"
+                >
+                  <td className="px-5 py-4 font-semibold">{module.name}</td>
+                  <td className="px-5 py-4 qa-mono">{module.code}</td>
+                  <td className="px-5 py-4">{module.status}</td>
+                  <td className="px-5 py-4">{module.testCaseCount}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex gap-2">
+                      <Button
+                        secondary
+                        onClick={() => {
+                          setNotice("");
+                          setEditing(module.id);
+                          setForm({
+                            name: module.name,
+                            code: module.code,
+                            description: module.description || "",
+                          });
+                        }}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        secondary
+                        onClick={() =>
+                          update.mutate(
+                            {
+                              id: module.id,
+                              data: {
+                                status: (module.status === "ACTIVE"
+                                  ? "INACTIVE"
+                                  : "ACTIVE") as ModuleStatus,
+                              },
+                            },
+                            {
+                              onSuccess: (saved) => {
+                                client.setQueryData(
+                                  getListModulesQueryKey(),
+                                  (current: Module[] | undefined) =>
+                                    (current || []).map((item) =>
+                                      item.id === saved.id ? saved : item,
+                                    ),
+                                );
+                                refresh();
+                              },
+                              onError: failed,
+                            },
+                          )
+                        }
+                      >
+                        {module.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function Dashboard() {
   const { data, isLoading, isError, refetch } = useGetDashboardSummary();
-  const stats = data || { totalTestCases: 0, totalModules: 0, pass: 0, fail: 0, blocked: 0, notTested: 0, totalUsers: 0, pendingRequests: 0, recentActivity: [] };
-  const total = Math.max(stats.pass + stats.fail + stats.blocked + stats.notTested, 1);
-  return <div className="qa-enter"><PageHeader eyebrow="Command center" title="Quality overview" description="A clear read on test coverage, risk, and the work moving through the desk." action={<Button href="/create-test-case" icon={<Plus size={16} />} testId="button-create-case">New test case</Button>} />
-    {isLoading ? <LoadingState /> : isError ? <ErrorState retry={refetch} /> : <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Test cases" value={stats.totalTestCases} detail={`${stats.totalModules} modules in scope`} icon={<ClipboardCheck size={18} />} /><Metric label="Passing" value={stats.pass} detail={`${Math.round(stats.pass / total * 100)}% of recorded results`} tone="green" icon={<CheckCircle2 size={18} />} /><Metric label="Needs attention" value={stats.fail + stats.blocked} detail={`${stats.fail} failed · ${stats.blocked} blocked`} tone="red" icon={<AlertTriangle size={18} />} /><Metric label="Pending access" value={stats.pendingRequests} detail={`${stats.totalUsers} active users`} tone="amber" icon={<Users size={18} />} /></div>
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]"><section className="qa-card rounded-xl p-6"><div className="flex items-start justify-between"><div><p className="qa-label text-muted-foreground">Result distribution</p><h2 className="mt-2 text-xl font-extrabold">Where confidence stands</h2></div><BarChart3 className="text-primary" size={20} /></div><div className="mt-8 flex h-44 items-end gap-3 sm:gap-5">{[['PASS', stats.pass, 'bg-emerald-400'], ['FAIL', stats.fail, 'bg-red-400'], ['BLOCKED', stats.blocked, 'bg-amber-400'], ['NOT TESTED', stats.notTested, 'bg-slate-300']].map(([label, value, color]) => <div key={String(label)} className="flex flex-1 flex-col items-center gap-2"><span className="qa-mono text-xs">{String(value)}</span><div className={`w-full max-w-16 rounded-t-md ${color}`} style={{ height: `${Math.max(Number(value) / total * 120, 8)}px` }} /><span className="qa-label text-center text-muted-foreground">{String(label)}</span></div>)}</div></section><section className="qa-card rounded-xl p-6"><div className="flex items-start justify-between"><div><p className="qa-label text-muted-foreground">Recent activity</p><h2 className="mt-2 text-xl font-extrabold">The change trail</h2></div><Activity className="text-primary" size={20} /></div><div className="mt-5 space-y-4">{stats.recentActivity?.length ? stats.recentActivity.slice(0, 5).map((activity) => <div key={activity.id} className="flex gap-3" data-testid={`activity-${activity.id}`}><div className="mt-1 size-2 shrink-0 rounded-full bg-primary" /><div className="min-w-0"><p className="text-sm font-semibold"><span className="qa-mono text-xs text-primary">{activity.fieldName}</span> updated by {activity.changedBy}</p><p className="mt-0.5 text-xs text-muted-foreground">{formatDate(activity.changedAt)} · {activity.newValue || 'value added'}</p></div></div>) : <p className="py-8 text-sm text-muted-foreground">No changes have been recorded yet.</p>}</div></section></div>
-    </>}</div>;
+  const stats = data || {
+    totalTestCases: 0,
+    totalModules: 0,
+    pass: 0,
+    fail: 0,
+    blocked: 0,
+    notTested: 0,
+    totalUsers: 0,
+    pendingRequests: 0,
+    recentActivity: [],
+  };
+  const total = Math.max(
+    stats.pass + stats.fail + stats.blocked + stats.notTested,
+    1,
+  );
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Command center"
+        title="Quality overview"
+        description="A clear read on test coverage, risk, and the work moving through the desk."
+      />
+      {isLoading ? (
+        <LoadingState />
+      ) : isError ? (
+        <ErrorState retry={refetch} />
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Metric
+              label="Test cases"
+              value={stats.totalTestCases}
+              detail={`${stats.totalModules} modules in scope`}
+              icon={<ClipboardCheck size={18} />}
+            />
+            <Metric
+              label="Passing"
+              value={stats.pass}
+              detail={`${Math.round((stats.pass / total) * 100)}% of recorded results`}
+              tone="green"
+              icon={<CheckCircle2 size={18} />}
+            />
+            <Metric
+              label="Needs attention"
+              value={stats.fail + stats.blocked}
+              detail={`${stats.fail} failed · ${stats.blocked} blocked`}
+              tone="red"
+              icon={<AlertTriangle size={18} />}
+            />
+            <Metric
+              label="Pending access"
+              value={stats.pendingRequests}
+              detail={`${stats.totalUsers} active users`}
+              tone="amber"
+              icon={<Users size={18} />}
+            />
+          </div>
+          <div className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_.75fr]">
+            <section className="qa-card rounded-xl p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="qa-label text-muted-foreground">
+                    Result distribution
+                  </p>
+                  <h2 className="mt-2 text-xl font-extrabold">
+                    Where confidence stands
+                  </h2>
+                </div>
+                <BarChart3 className="text-primary" size={20} />
+              </div>
+              <div className="mt-8 flex h-44 items-end gap-3 sm:gap-5">
+                {[
+                  ["PASS", stats.pass, "bg-emerald-400"],
+                  ["FAIL", stats.fail, "bg-red-400"],
+                  ["BLOCKED", stats.blocked, "bg-amber-400"],
+                  ["NOT TESTED", stats.notTested, "bg-slate-300"],
+                ].map(([label, value, color]) => (
+                  <div
+                    key={String(label)}
+                    className="flex flex-1 flex-col items-center gap-2"
+                  >
+                    <span className="qa-mono text-xs">{String(value)}</span>
+                    <div
+                      className={`w-full max-w-16 rounded-t-md ${color}`}
+                      style={{
+                        height: `${Math.max((Number(value) / total) * 120, 8)}px`,
+                      }}
+                    />
+                    <span className="qa-label text-center text-muted-foreground">
+                      {String(label)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="qa-card rounded-xl p-6">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="qa-label text-muted-foreground">
+                    Recent activity
+                  </p>
+                  <h2 className="mt-2 text-xl font-extrabold">
+                    The change trail
+                  </h2>
+                </div>
+                <Activity className="text-primary" size={20} />
+              </div>
+              <div className="mt-5 space-y-4">
+                {stats.recentActivity?.length ? (
+                  stats.recentActivity.slice(0, 5).map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex gap-3"
+                      data-testid={`activity-${activity.id}`}
+                    >
+                      <div className="mt-1 size-2 shrink-0 rounded-full bg-primary" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">
+                          <span className="qa-mono text-xs text-primary">
+                            {activity.fieldName}
+                          </span>{" "}
+                          updated by {activity.changedBy}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatDate(activity.changedAt)} ·{" "}
+                          {activity.newValue || "value added"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-8 text-sm text-muted-foreground">
+                    No changes have been recorded yet.
+                  </p>
+                )}
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 function TestCases() {
   const modules = useListModules();
-  const [search, setSearch] = useState(''); const [moduleId, setModuleId] = useState(''); const [result, setResult] = useState('');
-  const params = useMemo(() => ({ search: search || undefined, moduleId: moduleId ? Number(moduleId) : undefined, result: (result || undefined) as TestResult | undefined, page: 1, pageSize: 50 }), [search, moduleId, result]);
-  const query = useListTestCases(params); const items = query.data?.items || [];
-  return <div className="qa-enter"><PageHeader eyebrow="Case library" title="Test cases" description="Browse the full verification record by module, outcome, or tester." action={<Button href="/create-test-case" icon={<Plus size={16} />} testId="button-create-case">New test case</Button>} />
-    <div className="qa-card mb-5 rounded-xl p-4"><div className="grid gap-3 md:grid-cols-[1fr_190px_160px_auto]"><label className="relative block"><Search className="absolute left-3 top-3 text-muted-foreground" size={16} /><input data-testid="input-search-test-cases" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search description or case number" /></label><select data-testid="select-module-filter" value={moduleId} onChange={(e) => setModuleId(e.target.value)}><option value="">All modules</option>{(modules.data || []).map((module) => <option value={module.id} key={module.id}>{module.code} · {module.name}</option>)}</select><select data-testid="select-result-filter" value={result} onChange={(e) => setResult(e.target.value)}><option value="">All outcomes</option>{results.map((item) => <option key={item} value={item}>{item.replace('_', ' ')}</option>)}</select><Button secondary icon={<Filter size={15} />} onClick={() => { setSearch(''); setModuleId(''); setResult(''); }} testId="button-clear-filters">Clear</Button></div></div>
-    {query.isLoading ? <LoadingState /> : query.isError ? <ErrorState retry={query.refetch} /> : items.length === 0 ? <EmptyState title="No matching cases" detail="Try a different search or clear the filters to see the full case library." /> : <div className="qa-card overflow-hidden rounded-xl"><div className="overflow-x-auto qa-scrollbar"><table className="w-full min-w-[760px] text-left text-sm"><thead><tr className="border-b border-border bg-muted/45 qa-label text-muted-foreground"><th className="px-5 py-4">Case</th><th className="px-5 py-4">Module</th><th className="px-5 py-4">Description</th><th className="px-5 py-4">Result</th><th className="px-5 py-4">Test date</th><th className="px-5 py-4">Evidence</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="group border-b border-border last:border-0 hover:bg-muted/35" data-testid={`row-test-case-${item.id}`}><td className="px-5 py-4"><Link href={`/test-cases/${item.id}`} data-testid={`link-test-case-${item.id}`} className="qa-mono font-medium text-primary hover:underline">{item.testCaseNumber}</Link><div className="mt-1 text-xs text-muted-foreground">{item.performedBy}</div></td><td className="px-5 py-4"><span className="qa-mono text-xs">{item.moduleName}</span></td><td className="max-w-[280px] truncate px-5 py-4 font-semibold">{item.description}</td><td className="px-5 py-4"><StatusBadge value={item.testResult} /></td><td className="px-5 py-4 text-muted-foreground">{formatDate(item.testDate)}</td><td className="px-5 py-4 text-muted-foreground"><span className="inline-flex items-center gap-1.5"><Paperclip size={14} />{item.attachmentCount}</span></td></tr>)}</tbody></table></div><div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground"><span data-testid="text-results-count">{query.data?.total || items.length} records</span><span className="qa-mono">Page {query.data?.page || 1}</span></div></div>}</div>;
+  const [search, setSearch] = useState("");
+  const [moduleId, setModuleId] = useState("");
+  const [result, setResult] = useState("");
+  const params = useMemo(
+    () => ({
+      search: search || undefined,
+      moduleId: moduleId ? Number(moduleId) : undefined,
+      result: (result || undefined) as TestResult | undefined,
+      page: 1,
+      pageSize: 50,
+    }),
+    [search, moduleId, result],
+  );
+  const query = useListTestCases(params);
+  const items = query.data?.items || [];
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Case library"
+        title="Test cases"
+        description="Browse the full verification record by module, outcome, or tester."
+      />
+      <div className="qa-card mb-5 rounded-xl p-4">
+        <div className="grid gap-3 md:grid-cols-[1fr_190px_160px_auto]">
+          <label className="relative block">
+            <Search
+              className="absolute left-3 top-3 text-muted-foreground"
+              size={16}
+            />
+            <input
+              data-testid="input-search-test-cases"
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search number, tag, or tester"
+            />
+          </label>
+          <select
+            data-testid="select-module-filter"
+            value={moduleId}
+            onChange={(e) => setModuleId(e.target.value)}
+          >
+            <option value="">All modules</option>
+            {(modules.data || []).map((module) => (
+              <option value={module.id} key={module.id}>
+                {module.code} · {module.name}
+              </option>
+            ))}
+          </select>
+          <select
+            data-testid="select-result-filter"
+            value={result}
+            onChange={(e) => setResult(e.target.value)}
+          >
+            <option value="">All statuses</option>
+            {results.map((item) => (
+              <option key={item} value={item}>
+                {item.replace("_", " ")}
+              </option>
+            ))}
+          </select>
+          <Button
+            secondary
+            icon={<Filter size={15} />}
+            onClick={() => {
+              setSearch("");
+              setModuleId("");
+              setResult("");
+            }}
+            testId="button-clear-filters"
+          >
+            Clear
+          </Button>
+        </div>
+      </div>
+      {query.isLoading ? (
+        <LoadingState />
+      ) : query.isError ? (
+        <ErrorState retry={query.refetch} />
+      ) : items.length === 0 ? (
+        <EmptyState
+          title="No matching cases"
+          detail="Try a different search or clear the filters to see the full case library."
+        />
+      ) : (
+        <div className="qa-card overflow-hidden rounded-xl">
+          <div className="overflow-x-auto qa-scrollbar">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/45 qa-label text-muted-foreground">
+                  <th className="px-5 py-4">Test case number</th>
+                  <th className="px-5 py-4">Test case tag</th>
+                  <th className="px-5 py-4">Test case date</th>
+                  <th className="px-5 py-4">Performed by</th>
+                  <th className="px-5 py-4">Status</th>
+                  <th className="px-5 py-4">Passed on</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="group border-b border-border last:border-0 hover:bg-muted/35"
+                    data-testid={`row-test-case-${item.id}`}
+                  >
+                    <td className="px-5 py-4">
+                      <Link
+                        href={`/test-cases/${item.id}`}
+                        data-testid={`link-test-case-${item.id}`}
+                        className="qa-mono font-medium text-primary hover:underline"
+                      >
+                        {item.testCaseNumber}
+                      </Link>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {item.moduleName}
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 font-semibold">
+                      {item.testCaseTag}
+                    </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {formatDate(item.testDate)}
+                    </td>
+                    <td className="px-5 py-4">{item.performedBy}</td>
+                    <td className="px-5 py-4">
+                      <StatusBadge value={item.testResult} />
+                    </td>
+                    <td className="px-5 py-4 text-muted-foreground">
+                      {formatDateTime(item.passedOn)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            <span data-testid="text-results-count">
+              {query.data?.total || items.length} records
+            </span>
+            <span className="qa-mono">Page {query.data?.page || 1}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CaseForm({ editId }: { editId?: number }) {
-  const modules = useListModules(); const [, setLocation] = useLocation(); const create = useCreateTestCase(); const update = useUpdateTestCase();
-  const detail = useGetTestCase(editId ?? 0, { query: { enabled: Boolean(editId), queryKey: getGetTestCaseQueryKey(editId ?? 0) } });
-  const [form, setForm] = useState({ moduleId: '', description: '', expectedResult: '', actualResult: '', testResult: 'NOT_TESTED' as TestResult, testDate: '' });
+  const modules = useListModules();
+  const [, setLocation] = useLocation();
+  const create = useCreateTestCase();
+  const update = useUpdateTestCase();
+  const detail = useGetTestCase(editId ?? 0, {
+    query: {
+      enabled: Boolean(editId),
+      queryKey: getGetTestCaseQueryKey(editId ?? 0),
+    },
+  });
+  const [form, setForm] = useState({
+    moduleId: "",
+    testCaseTag: "",
+    description: "",
+    expectedResult: "",
+    actualResult: "",
+    testResult: "NOT_TESTED" as TestResult,
+    testDate: "",
+  });
   const [initialized, setInitialized] = useState(false);
-  if (editId && detail.data && !initialized) { const item = detail.data; setForm({ moduleId: String(item.moduleId), description: item.description, expectedResult: item.expectedResult, actualResult: item.actualResult, testResult: item.testResult, testDate: item.testDate?.slice(0, 10) || '' }); setInitialized(true); }
-  const submit = (event: FormEvent) => { event.preventDefault(); const payload = { moduleId: Number(form.moduleId), description: form.description, expectedResult: form.expectedResult, actualResult: form.actualResult, testResult: form.testResult, ...(editId ? { testDate: form.testDate || undefined } : {}) }; if (editId) update.mutate({ id: editId, data: payload }, { onSuccess: () => { queryClient.invalidateQueries({ queryKey: getGetTestCaseQueryKey(editId) }); setLocation(`/test-cases/${editId}`); } }); else create.mutate({ data: payload }, { onSuccess: (item) => { queryClient.invalidateQueries({ queryKey: getListTestCasesQueryKey() }); setLocation(`/test-cases/${item.id}`); } }); };
-  if (editId && detail.isLoading) return <LoadingState label="Loading case for editing" />;
-  return <div className="qa-enter"><PageHeader eyebrow={editId ? 'Administration' : 'New verification'} title={editId ? `Edit ${detail?.data?.testCaseNumber || 'test case'}` : 'Create a test case'} description={editId ? 'Update the record while preserving a reviewable history of changes.' : 'Capture the expected behavior and the evidence that makes a result useful.'} action={editId ? <Button href={`/test-cases/${editId}`} secondary icon={<ArrowLeft size={16} />} testId="button-cancel-edit">Cancel</Button> : undefined} /><form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_320px]" data-testid={editId ? 'form-edit-test-case' : 'form-create-test-case'}><section className="qa-card rounded-xl p-6"><div className="grid gap-5 md:grid-cols-2"><Field label="Module"><select required data-testid="select-case-module" value={form.moduleId} onChange={(e) => setForm({ ...form, moduleId: e.target.value })}><option value="">Choose a module</option>{(modules.data || []).map((module) => <option key={module.id} value={module.id}>{module.code} · {module.name}</option>)}</select></Field>{editId && <Field label="Test date"><input data-testid="input-test-date" type="date" value={form.testDate} onChange={(e) => setForm({ ...form, testDate: e.target.value })} /></Field>}</div><div className="mt-5 space-y-5"><Field label="Description"><textarea required minLength={1} data-testid="textarea-description" rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What behavior is being verified?" /></Field><Field label="Expected result"><textarea required data-testid="textarea-expected-result" rows={4} value={form.expectedResult} onChange={(e) => setForm({ ...form, expectedResult: e.target.value })} placeholder="What should happen when the test passes?" /></Field><Field label="Actual result"><textarea data-testid="textarea-actual-result" rows={4} value={form.actualResult} onChange={(e) => setForm({ ...form, actualResult: e.target.value })} placeholder="What happened during execution?" /></Field></div></section><aside className="space-y-5"><section className="qa-card rounded-xl p-6"><p className="qa-label text-muted-foreground">Outcome</p><h2 className="mt-2 text-lg font-extrabold">Set the signal</h2><div className="mt-5 grid gap-2">{results.map((item) => <button type="button" key={item} data-testid={`button-result-${item.toLowerCase()}`} onClick={() => setForm({ ...form, testResult: item })} className={`flex items-center justify-between rounded-lg border px-3 py-3 text-left text-sm font-bold ${form.testResult === item ? 'border-primary bg-primary/10 text-primary' : 'border-border hover:bg-muted'}`}><span className="flex items-center gap-2">{resultIcon[item]}{item.replace('_', ' ')}</span>{form.testResult === item && <Check size={15} />}</button>)}</div></section><section className="qa-card rounded-xl p-6"><p className="qa-label text-muted-foreground">Attachments</p><p className="mt-2 text-sm text-muted-foreground">Evidence links can be added after the case is created.</p><div className="mt-4 rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground"><Paperclip className="mx-auto mb-2" size={18} />Attachment API ready</div></section><Button type="submit" icon={editId ? <Check size={16} /> : <Plus size={16} />} testId="button-submit-test-case">{editId ? 'Save changes' : 'Create test case'}</Button></aside></form></div>;
+  if (editId && detail.data && !initialized) {
+    const item = detail.data;
+    setForm({
+      moduleId: String(item.moduleId),
+      testCaseTag: item.testCaseTag,
+      description: item.description,
+      expectedResult: item.expectedResult,
+      actualResult: item.actualResult,
+      testResult: item.testResult,
+      testDate: item.testDate?.slice(0, 10) || "",
+    });
+    setInitialized(true);
+  }
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const payload = {
+      moduleId: Number(form.moduleId),
+      testCaseTag: form.testCaseTag,
+      description: form.description,
+      expectedResult: form.expectedResult,
+      actualResult: form.actualResult,
+      testResult: form.testResult,
+      ...(editId ? { testDate: form.testDate || undefined } : {}),
+    };
+    if (editId)
+      update.mutate(
+        { id: editId, data: payload },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({
+              queryKey: getGetTestCaseQueryKey(editId),
+            });
+            setLocation(`/test-cases/${editId}`);
+          },
+        },
+      );
+    else
+      create.mutate(
+        { data: payload },
+        {
+          onSuccess: (item) => {
+            queryClient.invalidateQueries({
+              queryKey: getListTestCasesQueryKey(),
+            });
+            setLocation(`/test-cases/${item.id}`);
+          },
+        },
+      );
+  };
+  if (editId && detail.isLoading)
+    return <LoadingState label="Loading case for editing" />;
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow={editId ? "Administration" : "New verification"}
+        title={
+          editId
+            ? `Edit ${detail?.data?.testCaseNumber || "test case"}`
+            : "Create a test case"
+        }
+        description={
+          editId
+            ? "Update the record while preserving a reviewable history of changes."
+            : "Capture the expected behavior and the evidence that makes a result useful."
+        }
+        action={
+          editId ? (
+            <Button
+              href={`/test-cases/${editId}`}
+              secondary
+              icon={<ArrowLeft size={16} />}
+              testId="button-cancel-edit"
+            >
+              Cancel
+            </Button>
+          ) : undefined
+        }
+      />
+      <form
+        onSubmit={submit}
+        className="grid gap-5 xl:grid-cols-[1fr_320px]"
+        data-testid={editId ? "form-edit-test-case" : "form-create-test-case"}
+      >
+        <section className="qa-card rounded-xl p-6">
+          <div className="grid gap-5 md:grid-cols-2">
+            <Field label="Module">
+              <select
+                required
+                data-testid="select-case-module"
+                value={form.moduleId}
+                onChange={(e) => setForm({ ...form, moduleId: e.target.value })}
+              >
+                <option value="">Choose a module</option>
+                {(modules.data || [])
+                  .filter(
+                    (module) =>
+                      module.status === "ACTIVE" ||
+                      String(module.id) === form.moduleId,
+                  )
+                  .map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.code} · {module.name}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <Field label="Test Case Tag">
+              <input
+                required
+                data-testid="input-test-case-tag"
+                value={form.testCaseTag}
+                onChange={(e) =>
+                  setForm({ ...form, testCaseTag: e.target.value })
+                }
+                placeholder="Valid GRN Creation"
+              />
+            </Field>
+            {editId && (
+              <Field label="Test date">
+                <input
+                  data-testid="input-test-date"
+                  type="date"
+                  value={form.testDate}
+                  onChange={(e) =>
+                    setForm({ ...form, testDate: e.target.value })
+                  }
+                />
+              </Field>
+            )}
+          </div>
+          <div className="mt-5 space-y-5">
+            <Field label="Description">
+              <textarea
+                required
+                minLength={1}
+                data-testid="textarea-description"
+                rows={4}
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                placeholder="What behavior is being verified?"
+              />
+            </Field>
+            <Field label="Expected result">
+              <textarea
+                required
+                data-testid="textarea-expected-result"
+                rows={4}
+                value={form.expectedResult}
+                onChange={(e) =>
+                  setForm({ ...form, expectedResult: e.target.value })
+                }
+                placeholder="What should happen when the test passes?"
+              />
+            </Field>
+            <Field label="Actual result">
+              <textarea
+                data-testid="textarea-actual-result"
+                rows={4}
+                value={form.actualResult}
+                onChange={(e) =>
+                  setForm({ ...form, actualResult: e.target.value })
+                }
+                placeholder="What happened during execution?"
+              />
+            </Field>
+          </div>
+        </section>
+        <aside className="space-y-5">
+          <section className="qa-card rounded-xl p-6">
+            <p className="qa-label text-muted-foreground">Status</p>
+            <div className="mt-5 grid gap-2">
+              {results.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  data-testid={`button-result-${item.toLowerCase()}`}
+                  onClick={() => setForm({ ...form, testResult: item })}
+                  className={`flex items-center justify-between rounded-lg border px-3 py-3 text-left text-sm font-bold ${form.testResult === item ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}
+                >
+                  <span className="flex items-center gap-2">
+                    {resultIcon[item]}
+                    {item.replace("_", " ")}
+                  </span>
+                  {form.testResult === item && <Check size={15} />}
+                </button>
+              ))}
+            </div>
+          </section>
+          <Button
+            type="submit"
+            icon={editId ? <Check size={16} /> : <Plus size={16} />}
+            testId="button-submit-test-case"
+          >
+            {editId ? "Save changes" : "Create test case"}
+          </Button>
+        </aside>
+      </form>
+    </div>
+  );
+}
+
+function LegacyCaseDetail() {
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id);
+  const query = useGetTestCase(id);
+  const session = useGetSession();
+  const remove = useDeleteTestCase();
+  const [tab, setTab] = useState<"evidence" | "history">("evidence");
+  if (query.isLoading) return <LoadingState label="Loading test case detail" />;
+  if (query.isError || !query.data) return <ErrorState retry={query.refetch} />;
+  const item = query.data;
+  const user = session.data?.user;
+  const canEdit = user?.role === "ADMIN" || item.createdByUserId === user?.id;
+  const canDelete = user?.role === "ADMIN";
+  return (
+    <div className="qa-enter">
+      <div className="mb-7 flex items-center gap-3 text-sm">
+        <Link
+          href="/test-cases"
+          data-testid="link-back-test-cases"
+          className="inline-flex items-center gap-2 font-semibold text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft size={15} /> Case library
+        </Link>
+        <span className="text-border">/</span>
+        <span className="qa-mono text-primary">{item.testCaseNumber}</span>
+      </div>
+      <PageHeader
+        eyebrow={item.moduleName}
+        title={item.description}
+        description={`Performed by ${item.performedBy} · tested ${formatDate(item.testDate)}`}
+        action={
+          <Button
+            href={`/edit-test-case?id=${item.id}`}
+            secondary
+            icon={<FileEdit size={15} />}
+            testId="button-edit-case"
+          >
+            Edit
+          </Button>
+        }
+      />
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+        <section className="space-y-5">
+          <div className="qa-card rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <p className="qa-label text-muted-foreground">Recorded outcome</p>
+              <StatusBadge value={item.testResult} />
+            </div>
+            <div className="mt-6 grid gap-5 md:grid-cols-2">
+              <div>
+                <p className="qa-label text-muted-foreground">
+                  Expected result
+                </p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+                  {item.expectedResult}
+                </p>
+              </div>
+              <div>
+                <p className="qa-label text-muted-foreground">Actual result</p>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+                  {item.actualResult || "No actual result recorded."}
+                </p>
+              </div>
+            </div>
+          </div>
+          <section className="qa-card rounded-xl p-6">
+            <div className="flex gap-1 border-b border-border">
+              <button
+                data-testid="button-tab-evidence"
+                onClick={() => setTab("evidence")}
+                className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === "evidence" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+              >
+                Evidence{" "}
+                <span className="ml-1 qa-mono text-xs">
+                  ({item.attachments.length})
+                </span>
+              </button>
+              <button
+                data-testid="button-tab-history"
+                onClick={() => setTab("history")}
+                className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === "history" ? "border-primary text-primary" : "border-transparent text-muted-foreground"}`}
+              >
+                History{" "}
+                <span className="ml-1 qa-mono text-xs">
+                  ({item.history.length})
+                </span>
+              </button>
+            </div>
+            {tab === "evidence" ? (
+              <div className="mt-5">
+                {item.attachments.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {item.attachments.map((attachment) => (
+                      <a
+                        href={attachment.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        key={attachment.id}
+                        data-testid={`link-attachment-${attachment.id}`}
+                        className="flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted"
+                      >
+                        <div className="grid size-9 place-items-center rounded-md bg-secondary text-secondary-foreground">
+                          <Paperclip size={16} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-bold">
+                            {attachment.fileName || attachment.type}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {attachment.sourceType}
+                          </p>
+                        </div>
+                        <ExternalLink
+                          size={14}
+                          className="text-muted-foreground"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    title="No evidence attached"
+                    detail="Evidence for this case will appear here when available."
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="mt-5 space-y-4">
+                {item.history.length ? (
+                  item.history.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="relative flex gap-4 border-l-2 border-primary/25 pl-5"
+                      data-testid={`history-entry-${entry.id}`}
+                    >
+                      <div className="absolute -left-[5px] top-1 size-2 rounded-full bg-primary" />
+                      <div className="flex-1">
+                        <div className="flex flex-wrap justify-between gap-2">
+                          <span className="qa-mono text-xs text-primary">
+                            {entry.fieldName}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(entry.changedAt)}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm">
+                          {entry.changedBy} changed{" "}
+                          <span className="font-semibold">
+                            {entry.previousValue || "empty"}
+                          </span>{" "}
+                          to{" "}
+                          <span className="font-semibold">
+                            {entry.newValue || "empty"}
+                          </span>
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <EmptyState
+                    title="No history yet"
+                    detail="Changes to this test case will be logged here."
+                  />
+                )}
+              </div>
+            )}
+          </section>
+        </section>
+        <aside className="space-y-5">
+          <div className="qa-card rounded-xl p-6">
+            <p className="qa-label text-muted-foreground">Case record</p>
+            <div className="mt-5 space-y-4">
+              {[
+                ["Case number", item.testCaseNumber],
+                ["Module", item.moduleName],
+                ["Created by", item.createdBy || "—"],
+                ["Last updated", formatDate(item.updatedAt)],
+                ["Passed on", formatDateTime(item.passedOn)],
+                ["Evidence", `${item.attachmentCount} attachments`],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 border-b border-border pb-3 last:border-0 last:pb-0"
+                >
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className="text-right text-sm font-bold">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl bg-sidebar p-6 text-sidebar-foreground">
+            <p className="qa-label text-sidebar-primary">Review note</p>
+            <p className="mt-3 text-sm leading-6 text-sidebar-foreground/70">
+              This record is the source of truth for release verification. Keep
+              outcomes specific and evidence close.
+            </p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
 }
 
 function CaseDetail() {
-  const params = useParams<{ id: string }>(); const id = Number(params.id); const query = useGetTestCase(id); const [tab, setTab] = useState<'evidence' | 'history'>('evidence');
-  if (query.isLoading) return <LoadingState label="Loading test case detail" />; if (query.isError || !query.data) return <ErrorState retry={query.refetch} />;
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id);
+  const query = useGetTestCase(id);
+  const session = useGetSession();
+  const remove = useDeleteTestCase();
+  if (query.isLoading || session.isLoading)
+    return <LoadingState label="Loading test case detail" />;
+  if (!query.data || !session.data?.user)
+    return <ErrorState retry={query.refetch} />;
   const item = query.data;
-  return <div className="qa-enter"><div className="mb-7 flex items-center gap-3 text-sm"><Link href="/test-cases" data-testid="link-back-test-cases" className="inline-flex items-center gap-2 font-semibold text-muted-foreground hover:text-foreground"><ArrowLeft size={15} /> Case library</Link><span className="text-border">/</span><span className="qa-mono text-primary">{item.testCaseNumber}</span></div><PageHeader eyebrow={item.moduleName} title={item.description} description={`Performed by ${item.performedBy} · tested ${formatDate(item.testDate)}`} action={<div className="flex gap-2"><Button href={`/edit-test-case?id=${item.id}`} secondary icon={<FileEdit size={15} />} testId="button-edit-case">Edit</Button><Button href="/create-test-case" icon={<Plus size={15} />} testId="button-new-case">New case</Button></div>} /><div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]"><section className="space-y-5"><div className="qa-card rounded-xl p-6"><div className="flex items-center justify-between"><p className="qa-label text-muted-foreground">Recorded outcome</p><StatusBadge value={item.testResult} /></div><div className="mt-6 grid gap-5 md:grid-cols-2"><div><p className="qa-label text-muted-foreground">Expected result</p><p className="mt-3 whitespace-pre-wrap text-sm leading-6">{item.expectedResult}</p></div><div><p className="qa-label text-muted-foreground">Actual result</p><p className="mt-3 whitespace-pre-wrap text-sm leading-6">{item.actualResult || 'No actual result recorded.'}</p></div></div></div><section className="qa-card rounded-xl p-6"><div className="flex gap-1 border-b border-border"><button data-testid="button-tab-evidence" onClick={() => setTab('evidence')} className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === 'evidence' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>Evidence <span className="ml-1 qa-mono text-xs">({item.attachments.length})</span></button><button data-testid="button-tab-history" onClick={() => setTab('history')} className={`border-b-2 px-3 py-3 text-sm font-bold ${tab === 'history' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground'}`}>History <span className="ml-1 qa-mono text-xs">({item.history.length})</span></button></div>{tab === 'evidence' ? <div className="mt-5">{item.attachments.length ? <div className="grid gap-3 sm:grid-cols-2">{item.attachments.map((attachment) => <a href={attachment.url} target="_blank" rel="noreferrer" key={attachment.id} data-testid={`link-attachment-${attachment.id}`} className="flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted"><div className="grid size-9 place-items-center rounded-md bg-secondary text-secondary-foreground"><Paperclip size={16} /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{attachment.fileName || attachment.type}</p><p className="text-xs text-muted-foreground">{attachment.sourceType}</p></div><ExternalLink size={14} className="text-muted-foreground" /></a>)}</div> : <EmptyState title="No evidence attached" detail="Evidence for this case will appear here when available." />}</div> : <div className="mt-5 space-y-4">{item.history.length ? item.history.map((entry) => <div key={entry.id} className="relative flex gap-4 border-l-2 border-primary/25 pl-5" data-testid={`history-entry-${entry.id}`}><div className="absolute -left-[5px] top-1 size-2 rounded-full bg-primary" /><div className="flex-1"><div className="flex flex-wrap justify-between gap-2"><span className="qa-mono text-xs text-primary">{entry.fieldName}</span><span className="text-xs text-muted-foreground">{formatDate(entry.changedAt)}</span></div><p className="mt-1 text-sm">{entry.changedBy} changed <span className="font-semibold">{entry.previousValue || 'empty'}</span> to <span className="font-semibold">{entry.newValue || 'empty'}</span></p></div></div>) : <EmptyState title="No history yet" detail="Changes to this test case will be logged here." />}</div>}</section></section><aside className="space-y-5"><div className="qa-card rounded-xl p-6"><p className="qa-label text-muted-foreground">Case record</p><div className="mt-5 space-y-4">{[['Case number', item.testCaseNumber], ['Module', item.moduleName], ['Created by', item.createdBy || '—'], ['Last updated', formatDate(item.updatedAt)], ['Evidence', `${item.attachmentCount} attachments`]].map(([label, value]) => <div key={label} className="flex items-center justify-between gap-4 border-b border-border pb-3 last:border-0 last:pb-0"><span className="text-sm text-muted-foreground">{label}</span><span className="text-right text-sm font-bold">{value}</span></div>)}</div></div><div className="rounded-xl bg-sidebar p-6 text-sidebar-foreground"><p className="qa-label text-sidebar-primary">Review note</p><p className="mt-3 text-sm leading-6 text-sidebar-foreground/70">This record is the source of truth for release verification. Keep outcomes specific and evidence close.</p></div></aside></div></div>;
+  const user = session.data.user;
+  const canEdit = user.role === "ADMIN" || item.createdByUserId === user.id;
+  const canDelete = user.role === "ADMIN";
+  return (
+    <div data-permissioned-detail className="space-y-4">
+      <div className="flex justify-end gap-2">
+        {canEdit && (
+          <Button
+            href={
+              user.role === "ADMIN"
+                ? `/edit-test-case?id=${id}`
+                : `/test-cases/${id}/edit`
+            }
+            secondary
+            icon={<FileEdit size={15} />}
+            testId="button-permission-edit"
+          >
+            Edit
+          </Button>
+        )}
+        {canDelete && (
+          <Button
+            secondary
+            icon={<X size={15} />}
+            onClick={() => {
+              if (window.confirm("Delete this test case?"))
+                remove.mutate(
+                  { id },
+                  { onSuccess: () => window.location.assign("/test-cases") },
+                );
+            }}
+            testId="button-permission-delete"
+          >
+            Delete
+          </Button>
+        )}
+      </div>
+      <LegacyCaseDetail />
+    </div>
+  );
+}
+
+function CaseActions({
+  canEdit,
+  canDelete,
+  userRole,
+  id,
+  remove,
+}: {
+  canEdit: boolean;
+  canDelete: boolean;
+  userRole?: string;
+  id: number;
+  remove: ReturnType<typeof useDeleteTestCase>;
+}) {
+  return (
+    <div className="flex gap-2">
+      {canEdit && (
+        <Button
+          href={
+            userRole === "ADMIN"
+              ? `/edit-test-case?id=${id}`
+              : `/test-cases/${id}/edit`
+          }
+          secondary
+          icon={<FileEdit size={15} />}
+          testId="button-edit-case"
+        >
+          Edit
+        </Button>
+      )}
+      {canDelete && (
+        <Button
+          secondary
+          icon={<X size={15} />}
+          onClick={() => {
+            if (window.confirm("Delete this test case?"))
+              remove.mutate(
+                { id },
+                { onSuccess: () => window.location.assign("/test-cases") },
+              );
+          }}
+          testId="button-delete-case"
+        >
+          Delete
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function RichCaseDetail() {
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id);
+  const query = useGetTestCase(id);
+  const session = useGetSession();
+  const remove = useDeleteTestCase();
+  if (query.isLoading || session.isLoading)
+    return <LoadingState label="Loading test case detail" />;
+  if (query.isError || !query.data || !session.data?.user)
+    return <ErrorState retry={query.refetch} />;
+  const item = query.data;
+  const user = session.data.user;
+  const canEdit = user.role === "ADMIN" || item.createdByUserId === user.id;
+  return (
+    <div className="qa-enter">
+      <div className="mb-7 flex items-center gap-3 text-sm">
+        <Link
+          href="/test-cases"
+          className="font-semibold text-muted-foreground"
+        >
+          <ArrowLeft size={15} /> Case library
+        </Link>
+        <span>/</span>
+        <span className="qa-mono text-primary">{item.testCaseNumber}</span>
+      </div>
+      <PageHeader
+        eyebrow={item.moduleName}
+        title={plainText(item.testCaseTag)}
+        description={`Performed by ${item.performedBy} · tested ${formatDate(item.testDate)}`}
+        action={
+          <CaseActions
+            canEdit={canEdit}
+            canDelete={user.role === "ADMIN"}
+            userRole={user.role}
+            id={id}
+            remove={remove}
+          />
+        }
+      />
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+        <section className="space-y-5">
+          <div className="qa-card rounded-xl p-6">
+            <div className="flex items-center justify-between">
+              <p className="qa-label text-muted-foreground">Current status</p>
+              <StatusBadge value={item.testResult} />
+            </div>
+            <div className="mt-6 space-y-5">
+              <div>
+                <p className="qa-label text-muted-foreground">Description</p>
+                <div className="mt-3">
+                  <RichTextView value={item.description} />
+                </div>
+              </div>
+              <div>
+                <p className="qa-label text-muted-foreground">
+                  Expected result
+                </p>
+                <div className="mt-3">
+                  <RichTextView value={item.expectedResult} />
+                </div>
+              </div>
+              <div>
+                <p className="qa-label text-muted-foreground">Actual result</p>
+                <div className="mt-3">
+                  <RichTextView
+                    value={item.actualResult}
+                    fallback="No actual result recorded."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="qa-card rounded-xl p-6">
+            <h2 className="text-lg font-extrabold">
+              Test Evidence{" "}
+              <span className="qa-mono text-xs">
+                ({item.attachments.length})
+              </span>
+            </h2>
+            {item.attachments.length ? (
+              <div className="mt-5 grid gap-3">
+                {item.attachments.map((attachment) => (
+                  <a
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    key={attachment.id}
+                    className="flex items-center gap-3 rounded-lg border border-border p-3 hover:bg-muted"
+                  >
+                    <Paperclip size={16} />
+                    <span className="font-semibold">
+                      {attachment.fileName || attachment.type}
+                    </span>
+                    <ExternalLink size={14} className="ml-auto" />
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-muted-foreground">
+                No evidence attached.
+              </p>
+            )}
+          </div>
+        </section>
+        <aside className="qa-card h-fit rounded-xl p-6">
+          <p className="qa-label text-muted-foreground">Case record</p>
+          <div className="mt-5 space-y-4">
+            {[
+              ["Test Case Number", item.testCaseNumber],
+              ["Module", item.moduleName],
+              ["Test Case Tag", item.testCaseTag],
+              ["Performed By", item.performedBy],
+              ["Passed On", formatDateTime(item.passedOn)],
+              ["Updated By", item.updatedBy || "—"],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="flex justify-between gap-4 border-b border-border pb-3 text-sm"
+              >
+                <span className="text-muted-foreground">{label}</span>
+                <span className="text-right font-bold">{value}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+function AdminOnly({ children }: { children: ReactNode }) {
+  const session = useGetSession();
+  if (session.isLoading)
+    return <LoadingState label="Checking administrator access" />;
+  if (session.data?.user?.role !== "ADMIN") return <NotFound />;
+  return <>{children}</>;
 }
 
 function EditCases() {
-  const [search, setSearch] = useState(''); const query = useListTestCases({ search: search || undefined, page: 1, pageSize: 30 });
-  return <div className="qa-enter"><PageHeader eyebrow="Administration" title="Edit test cases" description="Find a record, inspect its context, and make a controlled update." /><div className="qa-card rounded-xl p-5"><div className="relative"><Search className="absolute left-3 top-3 text-muted-foreground" size={16} /><input data-testid="input-admin-search" className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by case number, module, or description" /></div></div><div className="mt-5">{query.isLoading ? <LoadingState /> : query.isError ? <ErrorState retry={query.refetch} /> : !query.data?.items.length ? <EmptyState title="No cases found" detail="Start typing to search the case library." /> : <div className="grid gap-3">{query.data.items.map((item) => <div key={item.id} className="qa-card flex flex-col gap-4 rounded-xl p-5 sm:flex-row sm:items-center sm:justify-between" data-testid={`card-edit-case-${item.id}`}><div><div className="flex items-center gap-3"><span className="qa-mono text-xs text-primary">{item.testCaseNumber}</span><StatusBadge value={item.testResult} /></div><h3 className="mt-2 font-bold">{item.description}</h3><p className="mt-1 text-xs text-muted-foreground">{item.moduleName} · updated {formatDate(item.updatedAt)}</p></div><Button href={`/edit-test-case?id=${item.id}`} secondary icon={<FileEdit size={15} />} testId={`button-edit-case-${item.id}`}>Edit record</Button></div>)}</div>}</div></div>;
+  const [search, setSearch] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const query = useGetAdminTestCaseByNumber(submitted, {
+    query: {
+      enabled: Boolean(submitted),
+      queryKey: getGetAdminTestCaseByNumberQueryKey(submitted),
+    },
+  });
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Administration"
+        title="Edit Test Case"
+        description="Find a record by its exact Test Case Number."
+      />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setSubmitted(search.trim());
+        }}
+        className="qa-card flex gap-3 rounded-xl p-5"
+      >
+        <input
+          required
+          data-testid="input-admin-search"
+          className="flex-1"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Enter exact Test Case Number"
+        />
+        <Button
+          type="submit"
+          icon={<Search size={15} />}
+          testId="button-admin-search"
+        >
+          Search
+        </Button>
+      </form>
+      <div className="mt-5">
+        {query.isLoading && <LoadingState />}
+        {query.isError && (
+          <EmptyState
+            title="No matching test case"
+            detail="Check the exact Test Case Number and try again."
+          />
+        )}
+        {query.data && (
+          <div
+            className="qa-card flex items-center justify-between gap-4 rounded-xl p-5"
+            data-testid="admin-edit-result"
+          >
+            <div>
+              <span className="qa-mono text-xs text-primary">
+                {query.data.testCaseNumber}
+              </span>
+              <h3 className="mt-2 font-bold">{query.data.testCaseTag}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {query.data.moduleName} · {query.data.testResult}
+              </p>
+            </div>
+            <Button
+              href={`/edit-test-case/open?id=${query.data.id}`}
+              secondary
+              icon={<FileEdit size={15} />}
+              testId="button-open-case"
+            >
+              Open
+            </Button>
+          </div>
+        )}
+        {!submitted && (
+          <EmptyState
+            title="Search for a test case"
+            detail="Enter an exact Test Case Number to continue."
+          />
+        )}
+      </div>
+    </div>
+  );
 }
 
 function UserManagement() {
-  const query = useListUsers(); const approve = useApproveAccessRequest(); const reject = useRejectAccessRequest(); const update = useUpdateUser(); const client = useQueryClient(); const [rejecting, setRejecting] = useState<number | null>(null); const [reason, setReason] = useState('');
-  const refresh = () => client.invalidateQueries({ queryKey: getListUsersQueryKey() });
-  if (query.isLoading) return <LoadingState label="Loading access desk" />; if (query.isError || !query.data) return <ErrorState retry={query.refetch} />;
-  const requests = query.data.pendingRequests || []; const users = query.data.activeUsers || [];
-  return <div className="qa-enter"><PageHeader eyebrow="Administration" title="User management" description="Review access requests and keep the active workspace roster accurate." /><div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]"><section className="qa-card rounded-xl p-6"><div className="flex items-start justify-between"><div><p className="qa-label text-muted-foreground">Access queue</p><h2 className="mt-2 text-xl font-extrabold">Pending requests <span className="qa-mono text-primary">({requests.length})</span></h2></div><Clock3 className="text-primary" size={19} /></div>{requests.length ? <div className="mt-5 space-y-3">{requests.map((request) => <div key={request.id} className="rounded-lg border border-border p-4" data-testid={`request-${request.id}`}><div className="flex items-start justify-between gap-3"><div><h3 className="font-bold">{request.fullName}</h3><p className="text-xs text-muted-foreground">{request.email} · requested {formatDate(request.requestedAt)}</p></div><span className="rounded-full bg-amber-100 px-2 py-1 qa-label text-amber-800">{request.requestedRole}</span></div>{rejecting === request.id && <input autoFocus data-testid={`input-rejection-${request.id}`} className="mt-4" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for rejection" /> }<div className="mt-4 flex gap-2"><Button icon={<Check size={15} />} onClick={() => approve.mutate({ id: request.id }, { onSuccess: refresh })} testId={`button-approve-${request.id}`}>Approve</Button>{rejecting === request.id ? <Button secondary onClick={() => { reject.mutate({ id: request.id, data: { reason: reason || 'Request not approved.' } }, { onSuccess: () => { setRejecting(null); setReason(''); refresh(); } }); }} testId={`button-confirm-reject-${request.id}`}>Confirm rejection</Button> : <Button secondary icon={<X size={15} />} onClick={() => setRejecting(request.id)} testId={`button-reject-${request.id}`}>Reject</Button>}</div></div>)}</div> : <div className="mt-5"><EmptyState title="Queue is clear" detail="New access requests will appear here for review." /></div>}</section><section className="qa-card rounded-xl p-6"><div className="flex items-start justify-between"><div><p className="qa-label text-muted-foreground">Workspace roster</p><h2 className="mt-2 text-xl font-extrabold">Active users <span className="qa-mono text-primary">({users.length})</span></h2></div><Users className="text-primary" size={19} /></div><div className="mt-5 space-y-2">{users.map((user) => <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border p-3" data-testid={`user-${user.id}`}><Avatar name={user.fullName} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{user.fullName}</p><p className="truncate text-xs text-muted-foreground">{user.email}</p></div><select data-testid={`select-user-role-${user.id}`} value={user.role} onChange={(e) => update.mutate({ id: user.id, data: { role: e.target.value as 'ADMIN' | 'USER' } }, { onSuccess: refresh })} className="w-auto text-xs"><option value="USER">Tester</option><option value="ADMIN">Admin</option></select><button data-testid={`button-toggle-user-${user.id}`} onClick={() => update.mutate({ id: user.id, data: { accountStatus: 'DISABLED' } }, { onSuccess: refresh })} className="rounded-md p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="Disable user"><LockKeyhole size={15} /></button></div>)}</div></section></div></div>;
+  const query = useListUsers();
+  const approve = useApproveAccessRequest();
+  const reject = useRejectAccessRequest();
+  const update = useUpdateUser();
+  const client = useQueryClient();
+  const [rejecting, setRejecting] = useState<number | null>(null);
+  const [reason, setReason] = useState("");
+  const refresh = () =>
+    client.invalidateQueries({ queryKey: getListUsersQueryKey() });
+  if (query.isLoading) return <LoadingState label="Loading access desk" />;
+  if (query.isError || !query.data) return <ErrorState retry={query.refetch} />;
+  const requests = query.data.pendingRequests || [];
+  const users = query.data.activeUsers || [];
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Administration"
+        title="User management"
+        description="Review access requests and keep the active workspace roster accurate."
+      />
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_.9fr]">
+        <section className="qa-card rounded-xl p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="qa-label text-muted-foreground">Access queue</p>
+              <h2 className="mt-2 text-xl font-extrabold">
+                Pending requests{" "}
+                <span className="qa-mono text-primary">
+                  ({requests.length})
+                </span>
+              </h2>
+            </div>
+            <Clock3 className="text-primary" size={19} />
+          </div>
+          {requests.length ? (
+            <div className="mt-5 space-y-3">
+              {requests.map((request) => (
+                <div
+                  key={request.id}
+                  className="rounded-lg border border-border p-4"
+                  data-testid={`request-${request.id}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-bold">{request.fullName}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {request.email} · requested{" "}
+                        {formatDate(request.requestedAt)}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-amber-100 px-2 py-1 qa-label text-amber-800">
+                      {request.requestedRole}
+                    </span>
+                  </div>
+                  {rejecting === request.id && (
+                    <input
+                      autoFocus
+                      data-testid={`input-rejection-${request.id}`}
+                      className="mt-4"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="Reason for rejection"
+                    />
+                  )}
+                  <div className="mt-4 flex gap-2">
+                    <Button
+                      icon={<Check size={15} />}
+                      onClick={() =>
+                        approve.mutate(
+                          { id: request.id },
+                          { onSuccess: refresh },
+                        )
+                      }
+                      testId={`button-approve-${request.id}`}
+                    >
+                      Approve
+                    </Button>
+                    {rejecting === request.id ? (
+                      <Button
+                        secondary
+                        onClick={() => {
+                          reject.mutate(
+                            {
+                              id: request.id,
+                              data: {
+                                reason: reason || "Request not approved.",
+                              },
+                            },
+                            {
+                              onSuccess: () => {
+                                setRejecting(null);
+                                setReason("");
+                                refresh();
+                              },
+                            },
+                          );
+                        }}
+                        testId={`button-confirm-reject-${request.id}`}
+                      >
+                        Confirm rejection
+                      </Button>
+                    ) : (
+                      <Button
+                        secondary
+                        icon={<X size={15} />}
+                        onClick={() => setRejecting(request.id)}
+                        testId={`button-reject-${request.id}`}
+                      >
+                        Reject
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5">
+              <EmptyState
+                title="Queue is clear"
+                detail="New access requests will appear here for review."
+              />
+            </div>
+          )}
+        </section>
+        <section className="qa-card rounded-xl p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="qa-label text-muted-foreground">Workspace roster</p>
+              <h2 className="mt-2 text-xl font-extrabold">
+                Active users{" "}
+                <span className="qa-mono text-primary">({users.length})</span>
+              </h2>
+            </div>
+            <Users className="text-primary" size={19} />
+          </div>
+          <div className="mt-5 space-y-2">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center gap-3 rounded-lg border border-border p-3"
+                data-testid={`user-${user.id}`}
+              >
+                <Avatar name={user.fullName} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{user.fullName}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {user.email}
+                  </p>
+                </div>
+                <select
+                  data-testid={`select-user-role-${user.id}`}
+                  value={user.role}
+                  onChange={(e) =>
+                    update.mutate(
+                      {
+                        id: user.id,
+                        data: { role: e.target.value as "ADMIN" | "USER" },
+                      },
+                      { onSuccess: refresh },
+                    )
+                  }
+                  className="w-auto text-xs"
+                >
+                  <option value="USER">Tester</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+                <button
+                  data-testid={`button-toggle-user-${user.id}`}
+                  onClick={() =>
+                    update.mutate(
+                      { id: user.id, data: { accountStatus: "DISABLED" } },
+                      { onSuccess: refresh },
+                    )
+                  }
+                  className="rounded-md p-2 text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                  title="Disable user"
+                >
+                  <LockKeyhole size={15} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 }
 
 function Profile() {
-  const profile = useGetProfile(); const change = useChangePassword(); const [form, setForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' }); const [notice, setNotice] = useState('');
-  if (profile.isLoading) return <LoadingState label="Loading profile" />; if (profile.isError || !profile.data) return <ErrorState retry={profile.refetch} />;
-  const user = profile.data; const submit = (event: FormEvent) => { event.preventDefault(); setNotice(''); if (form.newPassword !== form.confirmPassword) { setNotice('New passwords must match.'); return; } change.mutate({ data: form }, { onSuccess: () => { setNotice('Password updated successfully.'); setForm({ currentPassword: '', newPassword: '', confirmPassword: '' }); }, onError: () => setNotice('Could not update password. Verify your current password and try again.') }); };
-  return <div className="qa-enter"><PageHeader eyebrow="Account" title="Profile" description="Your identity and sign-in settings for the Verity workspace." /><div className="grid gap-5 lg:grid-cols-[.7fr_1.3fr]"><section className="qa-card rounded-xl p-6"><div className="grid size-16 place-items-center rounded-2xl bg-primary text-xl font-extrabold text-primary-foreground">{initials(user.fullName)}</div><h2 className="mt-5 text-xl font-extrabold">{user.fullName}</h2><p className="mt-1 text-sm text-muted-foreground">{user.email}</p><div className="mt-6 space-y-3 border-t border-border pt-5"><div className="flex justify-between text-sm"><span className="text-muted-foreground">Role</span><span className="qa-mono text-xs">{user.role}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Account</span><span className="text-emerald-700">{user.accountStatus}</span></div><div className="flex justify-between text-sm"><span className="text-muted-foreground">Member since</span><span>{formatDate(user.createdAt)}</span></div></div></section><section className="qa-card rounded-xl p-6"><div className="flex items-start gap-3"><div className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground"><KeyRound size={17} /></div><div><p className="qa-label text-muted-foreground">Security</p><h2 className="mt-1 text-xl font-extrabold">Update password</h2><p className="mt-1 text-sm text-muted-foreground">Use a strong password you do not reuse elsewhere.</p></div></div><form onSubmit={submit} className="mt-7 max-w-lg space-y-4" data-testid="form-change-password"><Field label="Current password"><input data-testid="input-current-password" required minLength={8} type="password" value={form.currentPassword} onChange={(e) => setForm({ ...form, currentPassword: e.target.value })} /></Field><Field label="New password"><input data-testid="input-new-password" required minLength={8} type="password" value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} /></Field><Field label="Confirm new password"><input data-testid="input-confirm-new-password" required minLength={8} type="password" value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} /></Field>{notice && <p data-testid="text-password-notice" className="rounded-lg bg-secondary p-3 text-sm">{notice}</p>}<Button type="submit" icon={<Check size={15} />} testId="button-change-password">Update password</Button></form></section></div></div>;
+  const profile = useGetProfile();
+  const change = useChangePassword();
+  const [form, setForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [notice, setNotice] = useState("");
+  if (profile.isLoading) return <LoadingState label="Loading profile" />;
+  if (profile.isError || !profile.data)
+    return <ErrorState retry={profile.refetch} />;
+  const user = profile.data;
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setNotice("");
+    if (form.newPassword !== form.confirmPassword) {
+      setNotice("New passwords must match.");
+      return;
+    }
+    change.mutate(
+      { data: form },
+      {
+        onSuccess: () => {
+          setNotice("Password updated successfully.");
+          setForm({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+        },
+        onError: () =>
+          setNotice(
+            "Could not update password. Verify your current password and try again.",
+          ),
+      },
+    );
+  };
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow="Account"
+        title="Profile"
+        description="Your identity and sign-in settings for the Verity workspace."
+      />
+      <div className="grid gap-5 lg:grid-cols-[.7fr_1.3fr]">
+        <section className="qa-card rounded-xl p-6">
+          <div className="grid size-16 place-items-center rounded-2xl bg-primary text-xl font-extrabold text-primary-foreground">
+            {initials(user.fullName)}
+          </div>
+          <h2 className="mt-5 text-xl font-extrabold">{user.fullName}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{user.email}</p>
+          <div className="mt-6 space-y-3 border-t border-border pt-5">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Role</span>
+              <span className="qa-mono text-xs">{user.role}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Account</span>
+              <span className="text-emerald-700">{user.accountStatus}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Member since</span>
+              <span>{formatDate(user.createdAt)}</span>
+            </div>
+          </div>
+        </section>
+        <section className="qa-card rounded-xl p-6">
+          <div className="flex items-start gap-3">
+            <div className="grid size-9 place-items-center rounded-lg bg-secondary text-secondary-foreground">
+              <KeyRound size={17} />
+            </div>
+            <div>
+              <p className="qa-label text-muted-foreground">Security</p>
+              <h2 className="mt-1 text-xl font-extrabold">Update password</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Use a strong password you do not reuse elsewhere.
+              </p>
+            </div>
+          </div>
+          <form
+            onSubmit={submit}
+            className="mt-7 max-w-lg space-y-4"
+            data-testid="form-change-password"
+          >
+            <Field label="Current password">
+              <input
+                data-testid="input-current-password"
+                required
+                minLength={8}
+                type="password"
+                value={form.currentPassword}
+                onChange={(e) =>
+                  setForm({ ...form, currentPassword: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="New password">
+              <input
+                data-testid="input-new-password"
+                required
+                minLength={8}
+                type="password"
+                value={form.newPassword}
+                onChange={(e) =>
+                  setForm({ ...form, newPassword: e.target.value })
+                }
+              />
+            </Field>
+            <Field label="Confirm new password">
+              <input
+                data-testid="input-confirm-new-password"
+                required
+                minLength={8}
+                type="password"
+                value={form.confirmPassword}
+                onChange={(e) =>
+                  setForm({ ...form, confirmPassword: e.target.value })
+                }
+              />
+            </Field>
+            {notice && (
+              <p
+                data-testid="text-password-notice"
+                className="rounded-lg bg-secondary p-3 text-sm"
+              >
+                {notice}
+              </p>
+            )}
+            <Button
+              type="submit"
+              icon={<Check size={15} />}
+              testId="button-change-password"
+            >
+              Update password
+            </Button>
+          </form>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function RichCaseForm({ editId }: { editId?: number }) {
+  const modules = useListModules();
+  const detail = useGetTestCase(editId ?? 0, {
+    query: {
+      enabled: Boolean(editId),
+      queryKey: getGetTestCaseQueryKey(editId ?? 0),
+    },
+  });
+  const create = useCreateTestCase();
+  const update = useUpdateTestCase();
+  const remove = useDeleteTestCase();
+  const [, setLocation] = useLocation();
+  const [form, setForm] = useState({
+    moduleId: "",
+    testCaseTag: "",
+    description: "",
+    expectedResult: "",
+    actualResult: "",
+    imageUrl: "",
+    videoUrl: "",
+    testResult: "NOT_TESTED" as TestResult,
+  });
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (detail.data) {
+      const item = detail.data;
+      setForm({
+        moduleId: String(item.moduleId),
+        testCaseTag: item.testCaseTag,
+        description: item.description,
+        expectedResult: item.expectedResult,
+        actualResult: item.actualResult,
+        imageUrl:
+          item.attachments.find((attachment) => attachment.type === "IMAGE")
+            ?.url || "",
+        videoUrl:
+          item.attachments.find((attachment) => attachment.type === "VIDEO")
+            ?.url || "",
+        testResult: item.testResult,
+      });
+    }
+  }, [detail.data]);
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setError("");
+    const plain = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+    if (
+      !form.testCaseTag.trim() ||
+      !plain(form.description) ||
+      !plain(form.expectedResult) ||
+      !plain(form.actualResult) ||
+      !form.moduleId
+    ) {
+      setError("Please complete all required fields.");
+      return;
+    }
+    const attachments = [
+      form.imageUrl.trim()
+        ? {
+            type: "IMAGE" as const,
+            sourceType: "EXTERNAL_LINK" as const,
+            url: form.imageUrl.trim(),
+          }
+        : null,
+      form.videoUrl.trim()
+        ? {
+            type: "VIDEO" as const,
+            sourceType: "EXTERNAL_LINK" as const,
+            url: form.videoUrl.trim(),
+          }
+        : null,
+    ].filter(Boolean);
+    const data = {
+      moduleId: Number(form.moduleId),
+      testCaseTag: form.testCaseTag,
+      description: form.description,
+      expectedResult: form.expectedResult,
+      actualResult: form.actualResult,
+      testResult: form.testResult,
+      attachments,
+    };
+    if (editId)
+      update.mutate(
+        { id: editId, data },
+        {
+          onSuccess: () => setLocation(`/test-cases/${editId}`),
+          onError: () =>
+            setError("Could not save the test case. Please try again."),
+        },
+      );
+    else
+      create.mutate(
+        { data },
+        {
+          onSuccess: (item) => setLocation(`/test-cases/${item.id}`),
+          onError: () =>
+            setError("Could not save the test case. Please try again."),
+        },
+      );
+  };
+  if (editId && detail.isLoading)
+    return <LoadingState label="Loading test case" />;
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow={editId ? "Edit test case" : "New verification"}
+        title={editId ? "Edit test case" : "Create a test case"}
+        description="Required fields are marked by validation before saving."
+      />
+      <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <section className="qa-card rounded-xl p-6">
+          {editId && (
+            <Field label="Test Case Number">
+              <input
+                readOnly
+                disabled
+                value={detail.data?.testCaseNumber || ""}
+                className="bg-muted text-muted-foreground"
+              />
+            </Field>
+          )}
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <Field label="Module">
+              <select
+                required
+                value={form.moduleId}
+                onChange={(e) => setForm({ ...form, moduleId: e.target.value })}
+              >
+                <option value="">Choose a module</option>
+                {(modules.data || [])
+                  .filter(
+                    (module) =>
+                      module.status === "ACTIVE" ||
+                      String(module.id) === form.moduleId,
+                  )
+                  .map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.code} · {module.name}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <Field label="Test Case Tag">
+              <input
+                required
+                value={form.testCaseTag}
+                onChange={(e) =>
+                  setForm({ ...form, testCaseTag: e.target.value })
+                }
+                placeholder="Valid GRN Creation"
+              />
+            </Field>
+          </div>
+          <div className="mt-5 space-y-5">
+            <RichTextEditor
+              label="Description"
+              value={form.description}
+              onChange={(value) => setForm({ ...form, description: value })}
+              required
+              testId="editor-description"
+            />
+            <RichTextEditor
+              label="Expected Result"
+              value={form.expectedResult}
+              onChange={(value) => setForm({ ...form, expectedResult: value })}
+              required
+              testId="editor-expected-result"
+            />
+            <RichTextEditor
+              label="Actual Result"
+              value={form.actualResult}
+              onChange={(value) => setForm({ ...form, actualResult: value })}
+              required
+              testId="editor-actual-result"
+            />
+          </div>
+        </section>
+        <aside className="space-y-5">
+          <section className="qa-card rounded-xl p-6">
+            <p className="qa-label text-muted-foreground">Status</p>
+            <div className="mt-4 grid gap-2">
+              {results.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => setForm({ ...form, testResult: item })}
+                  className={`rounded-lg border px-3 py-3 text-left text-sm font-bold ${form.testResult === item ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+                >
+                  {item.replace("_", " ")}
+                </button>
+              ))}
+            </div>
+          </section>
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <Button type="submit" icon={<Check size={16} />}>
+            {editId ? "Save changes" : "Create test case"}
+          </Button>
+          {editId && (
+            <Button
+              secondary
+              type="button"
+              icon={<X size={16} />}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Are you sure you want to delete this test case? This cannot be undone.",
+                  )
+                )
+                  remove.mutate(
+                    { id: editId },
+                    { onSuccess: () => setLocation("/edit-test-case") },
+                  );
+              }}
+            >
+              Delete
+            </Button>
+          )}
+        </aside>
+      </form>
+    </div>
+  );
+}
+
+function EvidenceCaseForm({ editId }: { editId?: number }) {
+  const modules = useListModules();
+  const detail = useGetTestCase(editId ?? 0, {
+    query: {
+      enabled: Boolean(editId),
+      queryKey: getGetTestCaseQueryKey(editId ?? 0),
+    },
+  });
+  const create = useCreateTestCase();
+  const update = useUpdateTestCase();
+  const remove = useDeleteTestCase();
+  const [, setLocation] = useLocation();
+  const [form, setForm] = useState({
+    moduleId: "",
+    testCaseTag: "",
+    description: "",
+    expectedResult: "",
+    actualResult: "",
+    imageUrl: "",
+    videoUrl: "",
+    testResult: "NOT_TESTED" as TestResult,
+  });
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (detail.data) {
+      const item = detail.data;
+      setForm({
+        moduleId: String(item.moduleId),
+        testCaseTag: item.testCaseTag,
+        description: item.description,
+        expectedResult: item.expectedResult,
+        actualResult: item.actualResult,
+        imageUrl:
+          item.attachments.find((attachment) => attachment.type === "IMAGE")
+            ?.url || "",
+        videoUrl:
+          item.attachments.find((attachment) => attachment.type === "VIDEO")
+            ?.url || "",
+        testResult: item.testResult,
+      });
+    }
+  }, [detail.data]);
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const plain = (value: string) => value.replace(/<[^>]*>/g, "").trim();
+    if (
+      !form.moduleId ||
+      !form.testCaseTag.trim() ||
+      !plain(form.description) ||
+      !plain(form.expectedResult) ||
+      !plain(form.actualResult)
+    ) {
+      setError("Please complete all required fields.");
+      return;
+    }
+    const attachments = [
+      form.imageUrl.trim()
+        ? {
+            type: "IMAGE" as const,
+            sourceType: "EXTERNAL_LINK" as const,
+            url: form.imageUrl.trim(),
+          }
+        : null,
+      form.videoUrl.trim()
+        ? {
+            type: "VIDEO" as const,
+            sourceType: "EXTERNAL_LINK" as const,
+            url: form.videoUrl.trim(),
+          }
+        : null,
+    ].filter(Boolean);
+    const data = {
+      moduleId: Number(form.moduleId),
+      testCaseTag: form.testCaseTag,
+      description: form.description,
+      expectedResult: form.expectedResult,
+      actualResult: form.actualResult,
+      testResult: form.testResult,
+      attachments,
+    };
+    if (editId)
+      update.mutate(
+        { id: editId, data },
+        {
+          onSuccess: () => setLocation(`/test-cases/${editId}`),
+          onError: () =>
+            setError("Could not save the test case. Please try again."),
+        },
+      );
+    else
+      create.mutate(
+        { data },
+        {
+          onSuccess: (item) => setLocation(`/test-cases/${item.id}`),
+          onError: () =>
+            setError("Could not save the test case. Please try again."),
+        },
+      );
+  };
+  if (editId && detail.isLoading)
+    return <LoadingState label="Loading test case" />;
+  return (
+    <div className="qa-enter">
+      <PageHeader
+        eyebrow={editId ? "Edit test case" : "New verification"}
+        title={editId ? "Edit test case" : "Create a test case"}
+      />
+      <form onSubmit={submit} className="grid gap-5 xl:grid-cols-[1fr_320px]">
+        <section className="qa-card rounded-xl p-6">
+          {editId && (
+            <Field label="Test Case Number">
+              <input
+                readOnly
+                disabled
+                value={detail.data?.testCaseNumber || ""}
+                className="bg-muted text-muted-foreground"
+              />
+            </Field>
+          )}
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
+            <Field label="Module">
+              <select
+                required
+                value={form.moduleId}
+                onChange={(event) =>
+                  setForm({ ...form, moduleId: event.target.value })
+                }
+              >
+                <option value="">Choose a module</option>
+                {(modules.data || [])
+                  .filter(
+                    (module) =>
+                      module.status === "ACTIVE" ||
+                      String(module.id) === form.moduleId,
+                  )
+                  .map((module) => (
+                    <option key={module.id} value={module.id}>
+                      {module.code} · {module.name}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <Field label="Test Case Tag">
+              <input
+                required
+                value={form.testCaseTag}
+                onChange={(event) =>
+                  setForm({ ...form, testCaseTag: event.target.value })
+                }
+              />
+            </Field>
+          </div>
+          <div className="mt-5 space-y-5">
+            <RichTextEditor
+              label="Description"
+              value={form.description}
+              onChange={(value) => setForm({ ...form, description: value })}
+              required
+              testId="editor-description"
+              evidence={{
+                imageUrl: form.imageUrl,
+                videoUrl: form.videoUrl,
+                setImageUrl: (value) => setForm({ ...form, imageUrl: value }),
+                setVideoUrl: (value) => setForm({ ...form, videoUrl: value }),
+              }}
+            />
+            <RichTextEditor
+              label="Expected Result"
+              value={form.expectedResult}
+              onChange={(value) => setForm({ ...form, expectedResult: value })}
+              required
+              testId="editor-expected-result"
+            />
+            <RichTextEditor
+              label="Actual Result"
+              value={form.actualResult}
+              onChange={(value) => setForm({ ...form, actualResult: value })}
+              required
+              testId="editor-actual-result"
+            />
+          </div>
+        </section>
+        <aside className="space-y-5">
+          <section className="qa-card rounded-xl p-6">
+            <p className="qa-label text-muted-foreground">Status</p>
+            <div className="mt-4 grid gap-2">
+              {results.map((item) => (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => setForm({ ...form, testResult: item })}
+                  className={`rounded-lg border px-3 py-3 text-left text-sm font-bold ${form.testResult === item ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+                >
+                  {item.replace("_", " ")}
+                </button>
+              ))}
+            </div>
+          </section>
+          {error && (
+            <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
+          )}
+          <Button type="submit" icon={<Check size={16} />}>
+            {editId ? "Save changes" : "Create test case"}
+          </Button>
+          {editId && (
+            <Button
+              secondary
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    "Are you sure you want to delete this test case? This cannot be undone.",
+                  )
+                )
+                  remove.mutate(
+                    { id: editId },
+                    { onSuccess: () => setLocation("/edit-test-case") },
+                  );
+              }}
+            >
+              Delete
+            </Button>
+          )}
+        </aside>
+      </form>
+    </div>
+  );
 }
 
 function ProtectedRouter() {
-  const session = useGetSession(); const [location] = useLocation();
-  if (session.isLoading) return <div className="qa-shell grid place-items-center p-6"><LoadingState label="Preparing your workspace" /></div>;
+  const session = useGetSession();
+  const [location] = useLocation();
+  if (session.isLoading)
+    return (
+      <div className="qa-shell grid place-items-center p-6">
+        <LoadingState label="Preparing your workspace" />
+      </div>
+    );
   if (!session.data?.authenticated) return <AuthGateway />;
   const user = session.data.user;
-  return <AppShell user={user}><Switch><Route path="/dashboard" component={Dashboard} /><Route path="/test-cases" component={TestCases} /><Route path="/test-cases/:id" component={CaseDetail} /><Route path="/create-test-case" component={() => <CaseForm />} /><Route path="/edit-test-case"><EditRoute /></Route><Route path="/user-management" component={UserManagement} /><Route path="/profile" component={Profile} /><Route path="/"><Dashboard /></Route><Route component={NotFound} /></Switch></AppShell>;
+  return (
+    <AppShell user={user}>
+      <Switch>
+        <Route path="/dashboard" component={Dashboard} />
+        <Route path="/test-cases" component={TestCases} />
+        <Route path="/test-cases/" component={TestCases} />
+        <Route path="/test-cases/:id/edit">
+          <EvidenceCaseRoute />
+        </Route>
+        <Route path="/test-cases/:id" component={RichCaseDetail} />
+        <Route path="/create-test-case" component={CreateTestCase} />
+        <Route
+          path="/create-test-case/new"
+          component={() => <EvidenceCaseForm />}
+        />
+        <Route
+          path="/edit-test-case"
+          component={() => (
+            <AdminOnly>
+              <EditCases />
+            </AdminOnly>
+          )}
+        />
+        <Route path="/edit-test-case/open">
+          <AdminOnly>
+            <EvidenceCaseRoute />
+          </AdminOnly>
+        </Route>
+        <Route path="/module-management" component={ModuleManagement} />
+        <Route path="/user-management" component={UserManagement} />
+        <Route path="/profile" component={Profile} />
+        <Route path="/">
+          <Dashboard />
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
+    </AppShell>
+  );
 }
-function EditRoute() { const search = new URLSearchParams(window.location.search); const id = Number(search.get('id')); return <CaseForm editId={id || undefined} />; }
-function Router() { return <ErrorBoundary resetKey={window.location.pathname}><ProtectedRouter /></ErrorBoundary>; }
-function App() { return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>; }
+function EditRoute() {
+  const search = new URLSearchParams(window.location.search);
+  const id = Number(search.get("id"));
+  return <CaseForm editId={id || undefined} />;
+}
+function RichCaseRoute() {
+  const search = new URLSearchParams(window.location.search);
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id) || Number(search.get("id"));
+  return <RichCaseForm editId={id || undefined} />;
+}
+function EvidenceCaseRoute() {
+  const search = new URLSearchParams(window.location.search);
+  const params = useParams<{ id: string }>();
+  const id = Number(params.id) || Number(search.get("id"));
+  return <EvidenceCaseForm editId={id || undefined} />;
+}
+function Router() {
+  return (
+    <ErrorBoundary resetKey={window.location.pathname}>
+      <ProtectedRouter />
+    </ErrorBoundary>
+  );
+}
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+}
 export default App;
