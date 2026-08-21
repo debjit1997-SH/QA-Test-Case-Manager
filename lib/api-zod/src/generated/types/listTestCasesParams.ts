@@ -12,6 +12,7 @@ import type { PageSizeParameter } from './pageSizeParameter';
 import type { PerformedByParameter } from './performedByParameter';
 import type { ResultParameter } from './resultParameter';
 import type { SearchParameter } from './searchParameter';
+import type { TagParameter } from './tagParameter';
 import type { TestResult } from './testResult';
 import type { ToParameter } from './toParameter';
 
@@ -22,6 +23,7 @@ result?: ResultParameter;
 performedBy?: PerformedByParameter;
 from?: FromParameter;
 to?: ToParameter;
+tag?: TagParameter;
 /**
  * @minimum 1
  */

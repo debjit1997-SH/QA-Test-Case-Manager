@@ -11,6 +11,8 @@ import type { TestResult } from './testResult';
 export interface TestCaseUpdate {
   moduleId?: number;
   /** @minLength 1 */
+  testCaseTag?: string;
+  /** @minLength 1 */
   description?: string;
   /** @minLength 1 */
   expectedResult?: string;

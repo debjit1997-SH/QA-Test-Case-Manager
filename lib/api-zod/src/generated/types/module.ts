@@ -5,6 +5,7 @@
  * QA Test Case Manager API
  * OpenAPI spec version: 0.1.0
  */
+import type { ModuleStatus } from './moduleStatus';
 
 export interface Module {
   id: number;
@@ -12,6 +13,7 @@ export interface Module {
   code: string;
   /** @nullable */
   description?: string | null;
+  status: ModuleStatus;
   testCaseCount: number;
   passCount: number;
   failCount: number;

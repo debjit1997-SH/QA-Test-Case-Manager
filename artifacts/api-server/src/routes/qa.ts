@@ -56,8 +56,9 @@ const testCaseSelect = `
   join qa_users cb on cb.id=tc.created_by join qa_users ub on ub.id=tc.updated_by`;
 const formatTestCase = (r: any) => ({
   id: r.id, testCaseNumber: r.test_case_number, moduleId: r.module_id, moduleName: r.module_name,
-  testDate: r.test_date, description: r.description, expectedResult: r.expected_result,
+  testDate: r.test_date, testCaseTag: r.test_case_tag, description: r.description, expectedResult: r.expected_result,
   actualResult: r.actual_result, testResult: r.test_result, performedBy: r.performed_by,
+  passedOn: r.passed_on,
   performedByUserId: r.performed_by_user_id, createdBy: r.created_by_name, updatedBy: r.updated_by_name,
   createdAt: r.created_at, updatedAt: r.updated_at, attachmentCount: r.attachment_count,
 });
@@ -121,14 +122,38 @@ router.get("/modules", async (req, res) => {
     count(tc.id) filter(where tc.test_result='FAIL')::int as fail_count,
     count(tc.id) filter(where tc.test_result='BLOCKED')::int as blocked_count
     from qa_modules m left join qa_test_cases tc on tc.module_id=m.id group by m.id order by m.name`);
-  res.json(result.rows.map((r: any) => ({ id: r.id, name: r.name, code: r.code, description: r.description, testCaseCount: r.test_case_count, passCount: r.pass_count, failCount: r.fail_count, blockedCount: r.blocked_count })));
+  res.json(result.rows.map((r: any) => ({ id: r.id, name: r.name, code: r.code, description: r.description, status: r.status, testCaseCount: r.test_case_count, passCount: r.pass_count, failCount: r.fail_count, blockedCount: r.blocked_count })));
+});
+router.post("/modules", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const { name, code, description } = req.body;
+  if (!name || !code) { res.status(400).json({ error: "Module name and code are required." }); return; }
+  try {
+    const created = await pool.query("insert into qa_modules(name,code,description) values($1,$2,$3) returning *", [String(name).trim(), String(code).trim().toUpperCase(), description ?? null]);
+    const r = created.rows[0]; res.status(201).json({ id: r.id, name: r.name, code: r.code, description: r.description, status: r.status, testCaseCount: 0, passCount: 0, failCount: 0, blockedCount: 0 });
+  } catch { res.status(409).json({ error: "A module with this code already exists." }); }
+});
+router.patch("/modules/:id", async (req, res) => {
+  const user = await requireAdmin(req, res); if (!user) return;
+  const id = Number(req.params.id);
+  const current = await pool.query("select * from qa_modules where id=$1", [id]);
+  if (!current.rows[0]) { res.status(404).json({ error: "Module not found." }); return; }
+  const old = current.rows[0];
+  try {
+    const updated = await pool.query("update qa_modules set name=$1,code=$2,description=$3,status=$4,updated_at=now() where id=$5 returning *", [req.body.name ?? old.name, req.body.code ? String(req.body.code).toUpperCase() : old.code, req.body.description ?? old.description, req.body.status ?? old.status, id]);
+    const r = updated.rows[0]; const count = await pool.query("select count(*)::int as count, count(*) filter(where test_result='PASS')::int as pass, count(*) filter(where test_result='FAIL')::int as fail, count(*) filter(where test_result='BLOCKED')::int as blocked from qa_test_cases where module_id=$1", [id]);
+    res.json({ id: r.id, name: r.name, code: r.code, description: r.description, status: r.status, testCaseCount: count.rows[0].count, passCount: count.rows[0].pass, failCount: count.rows[0].fail, blockedCount: count.rows[0].blocked });
+  } catch { res.status(409).json({ error: "A module with this code already exists." }); }
 });
 router.get("/test-cases", async (req, res) => {
   const user = await requireUser(req, res); if (!user) return;
   const vals: any[] = []; const where: string[] = [];
   if (req.query.moduleId) { vals.push(Number(req.query.moduleId)); where.push(`tc.module_id=$${vals.length}`); }
   if (req.query.result) { vals.push(String(req.query.result)); where.push(`tc.test_result=$${vals.length}`); }
+  if (req.query.tag) { vals.push(`%${String(req.query.tag).toLowerCase()}%`); where.push(`lower(tc.test_case_tag) like $${vals.length}`); }
   if (req.query.search) { vals.push(`%${String(req.query.search).toLowerCase()}%`); where.push(`(lower(tc.test_case_number) like $${vals.length} or lower(tc.description) like $${vals.length} or lower(pu.full_name) like $${vals.length})`); }
+  if (req.query.from) { vals.push(String(req.query.from)); where.push(`tc.test_date >= $${vals.length}::date`); }
+  if (req.query.to) { vals.push(String(req.query.to)); where.push(`tc.test_date < ($${vals.length}::date + interval '1 day')`); }
   const clause = where.length ? ` where ${where.join(" and ")}` : "";
   const page = Math.max(Number(req.query.page ?? 1), 1), pageSize = Math.min(Number(req.query.pageSize ?? 20), 100);
   const count = await pool.query(`select count(*)::int as count from qa_test_cases tc join qa_users pu on pu.id=tc.performed_by_user_id${clause}`, vals);
@@ -137,17 +162,18 @@ router.get("/test-cases", async (req, res) => {
 });
 router.post("/test-cases", async (req, res) => {
   const user = await requireUser(req, res); if (!user) return;
-  const { moduleId, description, expectedResult, actualResult, testResult, attachments: incoming = [] } = req.body;
-  if (!moduleId || !description || !expectedResult || !testResult) { res.status(400).json({ error: "Module, description, expected result, and test result are required." }); return; }
+  const { moduleId, testCaseTag, description, expectedResult, actualResult, testResult, attachments: incoming = [] } = req.body;
+  if (!moduleId || !testCaseTag || !description || !expectedResult || !testResult) { res.status(400).json({ error: "Please complete all required fields." }); return; }
   const client = await pool.connect();
   try {
     await client.query("begin");
     const moduleResult = await client.query("select * from qa_modules where id=$1 for update", [Number(moduleId)]);
     if (!moduleResult.rows[0]) throw new Error("module");
     const module = moduleResult.rows[0];
+    if (module.status !== "ACTIVE") throw new Error("inactive");
     const seq = await client.query("insert into qa_module_sequences(module_id,next_number) values($1,2) on conflict(module_id) do update set next_number=qa_module_sequences.next_number+1 returning next_number-1 as number", [module.id]);
     const number = seq.rows[0]?.number ?? 1;
-    const tc = await client.query(`insert into qa_test_cases(test_case_number,module_id,performed_by_user_id,description,expected_result,actual_result,test_result,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$7,$3,$3) returning id`, [`${module.code}-TC-${String(number).padStart(3, "0")}`, module.id, user.id, description, expectedResult, actualResult ?? "", testResult]);
+    const tc = await client.query(`insert into qa_test_cases(test_case_number,module_id,test_case_tag,performed_by_user_id,description,expected_result,actual_result,test_result,passed_on,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$7,$8,case when $8='PASS' then now() else null end,$4,$4) returning id`, [`${module.code}-TC-${String(number).padStart(3, "0")}`, module.id, testCaseTag, user.id, description, expectedResult, actualResult ?? "", testResult]);
     for (const a of incoming) await client.query("insert into qa_attachments(test_case_id,type,source_type,url,file_name,mime_type) values($1,$2,$3,$4,$5,$6)", [tc.rows[0].id, a.type, a.sourceType, a.url, a.fileName ?? null, a.mimeType ?? null]);
     await client.query("commit");
     const created = await pool.query(`${testCaseSelect} where tc.id=$1`, [tc.rows[0].id]);
@@ -165,12 +191,14 @@ router.get("/test-cases/:id", async (req, res) => {
   res.json({ ...formatTestCase(result.rows[0]), attachments: a.rows.map(formatAttachment), history: h.rows.map((r: any) => ({ id: r.id, fieldName: r.field_name, previousValue: r.previous_value, newValue: r.new_value, changedBy: r.changed_by, changedAt: r.changed_at })) });
 });
 router.patch("/test-cases/:id", async (req, res) => {
-  const user = await requireAdmin(req, res); if (!user) return;
+  const user = await requireUser(req, res); if (!user) return;
   const id = Number(req.params.id); const current = await pool.query("select * from qa_test_cases where id=$1", [id]);
   if (!current.rows[0]) { res.status(404).json({ error: "Test case not found." }); return; }
-  const old = current.rows[0]; const next = { ...old, module_id: req.body.moduleId ?? old.module_id, description: req.body.description ?? old.description, expected_result: req.body.expectedResult ?? old.expected_result, actual_result: req.body.actualResult ?? old.actual_result, test_result: req.body.testResult ?? old.test_result, test_date: req.body.testDate ?? old.test_date };
-  await pool.query("update qa_test_cases set module_id=$1,description=$2,expected_result=$3,actual_result=$4,test_result=$5,test_date=$6,updated_by=$7,updated_at=now() where id=$8", [next.module_id, next.description, next.expected_result, next.actual_result, next.test_result, next.test_date, user.id, id]);
-  for (const key of ["module_id", "description", "expected_result", "actual_result", "test_result", "test_date"]) if (String(old[key]) !== String(next[key])) await pool.query("insert into qa_test_case_history(test_case_id,field_name,previous_value,new_value,changed_by) values($1,$2,$3,$4,$5)", [id, key, String(old[key]), String(next[key]), user.id]);
+  const old = current.rows[0];
+  if (user.role !== "ADMIN" && old.performed_by_user_id !== user.id) { res.status(403).json({ error: "You do not have permission to edit this test case." }); return; }
+  const next = { ...old, module_id: req.body.moduleId ?? old.module_id, test_case_tag: req.body.testCaseTag ?? old.test_case_tag, description: req.body.description ?? old.description, expected_result: req.body.expectedResult ?? old.expected_result, actual_result: req.body.actualResult ?? old.actual_result, test_result: req.body.testResult ?? old.test_result, test_date: req.body.testDate ?? old.test_date, passed_on: req.body.testResult === "PASS" && old.test_result !== "PASS" ? now() : req.body.testResult && req.body.testResult !== "PASS" ? null : old.passed_on };
+  await pool.query("update qa_test_cases set module_id=$1,test_case_tag=$2,description=$3,expected_result=$4,actual_result=$5,test_result=$6,test_date=$7,passed_on=$8,updated_by=$9,updated_at=now() where id=$10", [next.module_id, next.test_case_tag, next.description, next.expected_result, next.actual_result, next.test_result, next.test_date, next.passed_on, user.id, id]);
+  for (const key of ["module_id", "test_case_tag", "description", "expected_result", "actual_result", "test_result", "test_date", "passed_on"]) if (String(old[key]) !== String(next[key])) await pool.query("insert into qa_test_case_history(test_case_id,field_name,previous_value,new_value,changed_by) values($1,$2,$3,$4,$5)", [id, key, String(old[key]), String(next[key]), user.id]);
   const updated = await pool.query(`${testCaseSelect} where tc.id=$1`, [id]); res.json(formatTestCase(updated.rows[0]));
 });
 router.get("/users", async (req, res) => {

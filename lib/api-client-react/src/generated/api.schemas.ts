@@ -78,12 +78,21 @@ export interface Attachment {
   mimeType?: string | null;
 }
 
+export type ModuleStatus = typeof ModuleStatus[keyof typeof ModuleStatus];
+
+
+export const ModuleStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
 export interface Module {
   id: number;
   name: string;
   code: string;
   /** @nullable */
   description?: string | null;
+  status: ModuleStatus;
   testCaseCount: number;
   passCount: number;
   failCount: number;
@@ -96,10 +105,13 @@ export interface TestCase {
   moduleId: number;
   moduleName: string;
   testDate: string;
+  testCaseTag: string;
   description: string;
   expectedResult: string;
   actualResult: string;
   testResult: TestResult;
+  /** @nullable */
+  passedOn: string | null;
   performedBy: string;
   performedByUserId?: number;
   createdBy?: string;
@@ -223,6 +235,8 @@ export interface AttachmentInput {
 export interface TestCaseInput {
   moduleId: number;
   /** @minLength 1 */
+  testCaseTag: string;
+  /** @minLength 1 */
   description: string;
   /** @minLength 1 */
   expectedResult: string;
@@ -233,6 +247,8 @@ export interface TestCaseInput {
 
 export interface TestCaseUpdate {
   moduleId?: number;
+  /** @minLength 1 */
+  testCaseTag?: string;
   /** @minLength 1 */
   description?: string;
   /** @minLength 1 */
@@ -256,6 +272,31 @@ export interface UserUpdate {
   accountStatus?: UserUpdateAccountStatus;
 }
 
+export interface ModuleInput {
+  /** @minLength 1 */
+  name: string;
+  /** @minLength 1 */
+  code: string;
+  description?: string;
+}
+
+export type ModuleUpdateStatus = typeof ModuleUpdateStatus[keyof typeof ModuleUpdateStatus];
+
+
+export const ModuleUpdateStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export interface ModuleUpdate {
+  /** @minLength 1 */
+  name?: string;
+  /** @minLength 1 */
+  code?: string;
+  description?: string;
+  status?: ModuleUpdateStatus;
+}
+
 export interface PasswordChangeInput {
   /** @minLength 8 */
   currentPassword: string;
@@ -277,6 +318,8 @@ export type FromParameter = string;
 
 export type ToParameter = string;
 
+export type TagParameter = string;
+
 export type PageParameter = number;
 
 export type PageSizeParameter = number;
@@ -288,6 +331,7 @@ result?: ResultParameter;
 performedBy?: PerformedByParameter;
 from?: FromParameter;
 to?: ToParameter;
+tag?: TagParameter;
 /**
  * @minimum 1
  */

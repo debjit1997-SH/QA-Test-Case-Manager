@@ -127,12 +127,70 @@ export const ListModulesResponseItem = zod.object({
   "name": zod.string(),
   "code": zod.string(),
   "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
   "testCaseCount": zod.int(),
   "passCount": zod.int(),
   "failCount": zod.int(),
   "blockedCount": zod.int()
 })
 export const ListModulesResponse = zod.array(ListModulesResponseItem)
+
+
+/**
+ * @summary Create a module
+ */
+
+
+
+
+export const CreateModuleBody = zod.object({
+  "name": zod.string().min(1),
+  "code": zod.string().min(1),
+  "description": zod.string().optional()
+})
+
+export const CreateModuleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "testCaseCount": zod.int(),
+  "passCount": zod.int(),
+  "failCount": zod.int(),
+  "blockedCount": zod.int()
+})
+
+
+/**
+ * @summary Update module metadata or status
+ */
+export const UpdateModuleParams = zod.object({
+  "id": zod.coerce.number().int()
+})
+
+
+
+
+
+export const UpdateModuleBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "code": zod.string().min(1).optional(),
+  "description": zod.string().optional(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']).optional()
+})
+
+export const UpdateModuleResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "code": zod.string(),
+  "description": zod.string().nullish(),
+  "status": zod.enum(['ACTIVE', 'INACTIVE']),
+  "testCaseCount": zod.int(),
+  "passCount": zod.int(),
+  "failCount": zod.int(),
+  "blockedCount": zod.int()
+})
 
 
 /**
@@ -152,6 +210,7 @@ export const ListTestCasesQueryParams = zod.object({
   "performedBy": zod.coerce.number().int().optional(),
   "from": zod.date().optional(),
   "to": zod.date().optional(),
+  "tag": zod.coerce.string().optional(),
   "page": zod.coerce.number().int().min(1).default(listTestCasesQueryPageDefault),
   "pageSize": zod.coerce.number().int().min(1).max(listTestCasesQueryPageSizeMax).default(listTestCasesQueryPageSizeDefault)
 })
@@ -163,10 +222,12 @@ export const ListTestCasesResponse = zod.object({
   "moduleId": zod.int(),
   "moduleName": zod.string(),
   "testDate": zod.coerce.date(),
+  "testCaseTag": zod.string(),
   "description": zod.string(),
   "expectedResult": zod.string(),
   "actualResult": zod.string(),
   "testResult": zod.enum(['PASS', 'FAIL', 'BLOCKED', 'NOT_TESTED']),
+  "passedOn": zod.coerce.date().nullable(),
   "performedBy": zod.string(),
   "performedByUserId": zod.int().optional(),
   "createdBy": zod.string().optional(),
@@ -188,8 +249,10 @@ export const ListTestCasesResponse = zod.object({
 
 
 
+
 export const CreateTestCaseBody = zod.object({
   "moduleId": zod.int(),
+  "testCaseTag": zod.string().min(1),
   "description": zod.string().min(1),
   "expectedResult": zod.string().min(1),
   "actualResult": zod.string(),
@@ -209,10 +272,12 @@ export const CreateTestCaseResponse = zod.object({
   "moduleId": zod.int(),
   "moduleName": zod.string(),
   "testDate": zod.coerce.date(),
+  "testCaseTag": zod.string(),
   "description": zod.string(),
   "expectedResult": zod.string(),
   "actualResult": zod.string(),
   "testResult": zod.enum(['PASS', 'FAIL', 'BLOCKED', 'NOT_TESTED']),
+  "passedOn": zod.coerce.date().nullable(),
   "performedBy": zod.string(),
   "performedByUserId": zod.int().optional(),
   "createdBy": zod.string().optional(),
@@ -236,10 +301,12 @@ export const GetTestCaseResponse = zod.object({
   "moduleId": zod.int(),
   "moduleName": zod.string(),
   "testDate": zod.coerce.date(),
+  "testCaseTag": zod.string(),
   "description": zod.string(),
   "expectedResult": zod.string(),
   "actualResult": zod.string(),
   "testResult": zod.enum(['PASS', 'FAIL', 'BLOCKED', 'NOT_TESTED']),
+  "passedOn": zod.coerce.date().nullable(),
   "performedBy": zod.string(),
   "performedByUserId": zod.int().optional(),
   "createdBy": zod.string().optional(),
@@ -278,8 +345,10 @@ export const UpdateTestCaseParams = zod.object({
 
 
 
+
 export const UpdateTestCaseBody = zod.object({
   "moduleId": zod.int().optional(),
+  "testCaseTag": zod.string().min(1).optional(),
   "description": zod.string().min(1).optional(),
   "expectedResult": zod.string().min(1).optional(),
   "actualResult": zod.string().optional(),
@@ -300,10 +369,12 @@ export const UpdateTestCaseResponse = zod.object({
   "moduleId": zod.int(),
   "moduleName": zod.string(),
   "testDate": zod.coerce.date(),
+  "testCaseTag": zod.string(),
   "description": zod.string(),
   "expectedResult": zod.string(),
   "actualResult": zod.string(),
   "testResult": zod.enum(['PASS', 'FAIL', 'BLOCKED', 'NOT_TESTED']),
+  "passedOn": zod.coerce.date().nullable(),
   "performedBy": zod.string(),
   "performedByUserId": zod.int().optional(),
   "createdBy": zod.string().optional(),

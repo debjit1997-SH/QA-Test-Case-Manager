@@ -27,6 +27,8 @@ import type {
   ListTestCasesParams,
   LoginInput,
   Module,
+  ModuleInput,
+  ModuleUpdate,
   PasswordChangeInput,
   RejectionInput,
   Session,
@@ -587,6 +589,149 @@ export function useListModules<TData = Awaited<ReturnType<typeof listModules>>, 
 
 
 
+
+export const getCreateModuleUrl = () => {
+
+
+
+
+  return `/api/modules`
+}
+
+/**
+ * @summary Create a module
+ */
+export const createModule = async (moduleInput: ModuleInput, options?: Parameters<typeof customFetch>[1]): Promise<Module> => {
+
+  return customFetch<Module>(getCreateModuleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moduleInput)
+  }
+);}
+
+
+
+
+
+export const getCreateModuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext> => {
+
+const mutationKey = ['createModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createModule>>, {data: BodyType<ModuleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createModule(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateModuleMutationResult = NonNullable<Awaited<ReturnType<typeof createModule>>>
+    export type CreateModuleMutationBody = BodyType<ModuleInput>
+    export type CreateModuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a module
+ */
+export const useCreateModule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createModule>>, TError,{data: BodyType<ModuleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createModule>>,
+        TError,
+        {data: BodyType<ModuleInput>},
+        TContext
+      > => {
+      return useMutation(getCreateModuleMutationOptions(options));
+    }
+
+export const getUpdateModuleUrl = (id: number,) => {
+
+
+
+
+  return `/api/modules/${id}`
+}
+
+/**
+ * @summary Update module metadata or status
+ */
+export const updateModule = async (id: number,
+    moduleUpdate: ModuleUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Module> => {
+
+  return customFetch<Module>(getUpdateModuleUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(moduleUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateModuleMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext> => {
+
+const mutationKey = ['updateModule'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateModule>>, {id: number;data: BodyType<ModuleUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateModule(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateModuleMutationResult = NonNullable<Awaited<ReturnType<typeof updateModule>>>
+    export type UpdateModuleMutationBody = BodyType<ModuleUpdate>
+    export type UpdateModuleMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update module metadata or status
+ */
+export const useUpdateModule = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateModule>>, TError,{id: number;data: BodyType<ModuleUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateModule>>,
+        TError,
+        {id: number;data: BodyType<ModuleUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateModuleMutationOptions(options));
+    }
 
 export const getListTestCasesUrl = (params?: ListTestCasesParams,) => {
   const normalizedParams = new URLSearchParams();
