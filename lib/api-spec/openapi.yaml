@@ -156,6 +156,7 @@ paths:
         - $ref: "#/components/parameters/PerformedBy"
         - $ref: "#/components/parameters/From"
         - $ref: "#/components/parameters/To"
+        - $ref: "#/components/parameters/Tag"
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PageSize"
       responses:
@@ -364,6 +365,10 @@ components:
       name: to
       in: query
       schema: { type: string, format: date }
+    Tag:
+      name: tag
+      in: query
+      schema: { type: string }
     Page:
       name: page
       in: query

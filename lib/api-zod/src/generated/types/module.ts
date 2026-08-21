@@ -14,6 +14,7 @@ export interface Module {
   status: ModuleStatus;
   /** @nullable */
   description?: string | null;
+  status: ModuleStatus;
   testCaseCount: number;
   passCount: number;
   failCount: number;

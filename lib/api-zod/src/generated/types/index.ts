@@ -37,6 +37,7 @@ export * from './resultParameter';
 export * from './role';
 export * from './searchParameter';
 export * from './session';
+export * from './tagParameter';
 export * from './testCase';
 export * from './testCaseDetail';
 export * from './testCaseInput';

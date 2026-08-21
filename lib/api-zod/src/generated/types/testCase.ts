@@ -14,6 +14,7 @@ export interface TestCase {
   moduleName: string;
   testCaseTag: string;
   testDate: Date;
+  testCaseTag: string;
   description: string;
   expectedResult: string;
   actualResult: string;
