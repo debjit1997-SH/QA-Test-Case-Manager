@@ -93,7 +93,6 @@ export interface Module {
   status: ModuleStatus;
   /** @nullable */
   description?: string | null;
-  status: ModuleStatus;
   testCaseCount: number;
   passCount: number;
   failCount: number;
@@ -107,7 +106,6 @@ export interface TestCase {
   moduleName: string;
   testCaseTag: string;
   testDate: string;
-  testCaseTag: string;
   description: string;
   expectedResult: string;
   actualResult: string;
@@ -300,31 +298,6 @@ export interface UserUpdate {
   accountStatus?: UserUpdateAccountStatus;
 }
 
-export interface ModuleInput {
-  /** @minLength 1 */
-  name: string;
-  /** @minLength 1 */
-  code: string;
-  description?: string;
-}
-
-export type ModuleUpdateStatus = typeof ModuleUpdateStatus[keyof typeof ModuleUpdateStatus];
-
-
-export const ModuleUpdateStatus = {
-  ACTIVE: 'ACTIVE',
-  INACTIVE: 'INACTIVE',
-} as const;
-
-export interface ModuleUpdate {
-  /** @minLength 1 */
-  name?: string;
-  /** @minLength 1 */
-  code?: string;
-  description?: string;
-  status?: ModuleUpdateStatus;
-}
-
 export interface PasswordChangeInput {
   /** @minLength 8 */
   currentPassword: string;
@@ -370,4 +343,3 @@ page?: PageParameter;
  */
 pageSize?: PageSizeParameter;
 };
-

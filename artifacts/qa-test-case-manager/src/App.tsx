@@ -1928,13 +1928,13 @@ function RichCaseDetail() {
             </div>
             <div className="mt-6 space-y-5">
               <div>
-                <p className="qa-label text-muted-foreground">Description</p>
+                <p className="text-base font-bold text-foreground">Description</p>
                 <div className="mt-3">
                   <RichTextView value={item.description} />
                 </div>
               </div>
               <div>
-                <p className="qa-label text-muted-foreground">
+                <p className="text-base font-bold text-foreground">
                   Expected result
                 </p>
                 <div className="mt-3">
@@ -1942,7 +1942,7 @@ function RichCaseDetail() {
                 </div>
               </div>
               <div>
-                <p className="qa-label text-muted-foreground">Actual result</p>
+                <p className="text-base font-bold text-foreground">Actual result</p>
                 <div className="mt-3">
                   <RichTextView
                     value={item.actualResult}
